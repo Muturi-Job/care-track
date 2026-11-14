@@ -115,7 +115,7 @@ module Seeds
     Episode.order(:patient_alias).each do |episode|
       stage = episode.current_stage_template
       puts "  #{episode.patient_alias} - #{episode.procedure_template.name}, " \
-           "stage #{stage.position} (#{stage.label}) -> /p/#{episode.tracking_code}"
+           "stage #{stage.position} (#{stage.label}) -> /f/#{episode.tracking_code}"
     end
   end
 end

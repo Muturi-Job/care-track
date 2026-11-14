@@ -1,0 +1,5 @@
+#!/bin/sh
+set -eu
+
+bundle exec rails db:prepare
+exec "$@"

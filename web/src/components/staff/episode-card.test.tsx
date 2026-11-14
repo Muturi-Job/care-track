@@ -6,7 +6,7 @@ import type { StaffEpisode } from "@/lib/staff/types";
 
 import { EpisodeCard } from "./episode-card";
 
-const FAMILY_URL = "http://localhost:3000/p/ABCDEFGHJK";
+const FAMILY_URL = "http://localhost:3000/f/ABCDEFGHJK";
 
 function renderCard(overrides: Partial<StaffEpisode> = {}) {
   const handlers = {

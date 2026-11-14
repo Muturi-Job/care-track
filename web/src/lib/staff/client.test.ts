@@ -43,6 +43,28 @@ describe("staff client", () => {
     expect(firstKey).not.toBe(secondKey);
   });
 
+  it("reuses the advance key when the response is lost, then clears it on success", async () => {
+    const calls: RecordedCall[] = [];
+    let requestCount = 0;
+    vi.stubGlobal("fetch", async (url: string, init: RequestInit) => {
+      calls.push({ url, init });
+      requestCount += 1;
+      if (requestCount === 1) throw new TypeError("response lost after server commit");
+
+      return jsonResponse({ episode: { id: "episode-1", stage_label: "Preparing" } });
+    });
+
+    await expect(sendAdvance("episode-retry")).rejects.toMatchObject({ status: 0 });
+    await sendAdvance("episode-retry");
+    await sendAdvance("episode-retry");
+
+    const keys = calls.map(
+      (call) => (call.init.headers as Record<string, string>)["idempotency-key"],
+    );
+    expect(keys[0]).toBe(keys[1]);
+    expect(keys[2]).not.toBe(keys[1]);
+  });
+
   it("passes the search term to the list route", async () => {
     const calls: RecordedCall[] = [];
     stubFetch(calls, { episodes: [] });

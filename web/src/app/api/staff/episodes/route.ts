@@ -1,4 +1,5 @@
 import { errorBody, readJsonBody, failureResponse } from "@/lib/staff/http";
+import { staffCreationEnabled } from "@/lib/staff/creation";
 import { createEpisode, loadEpisodes } from "@/lib/staff/server";
 
 export const dynamic = "force-dynamic";
@@ -16,6 +17,12 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  if (!staffCreationEnabled()) {
+    return Response.json(errorBody("staff_creation_disabled", "Creating episodes is turned off."), {
+      status: 404,
+    });
+  }
+
   const body = await readJsonBody(request);
   if (body === null) {
     return Response.json(errorBody("invalid_request", "Send a JSON body."), { status: 400 });

@@ -1,9 +1,12 @@
 module Api
   module V1
-    # Staff-facing episode endpoints. No authentication in Phase A.
+    # Staff-facing episode endpoints. Production access is restricted by the
+    # reverse proxy; the Rails app has no authentication in Phase A.
     class EpisodesController < ApplicationController
       # ACCESS CONTROL LATER: every action here is staff-only in a real system;
       # add authentication and an authorisation policy before use with patients.
+      before_action :reject_disabled_creation, only: :create
+
       rescue_from StageTransitionService::Rejected, with: :render_rejected
 
       def index
@@ -75,6 +78,12 @@ module Api
       end
 
       private
+
+      def reject_disabled_creation
+        return unless ENV.fetch("STAFF_CREATION_ENABLED", "true") == "false"
+
+        render json: { error: "staff_creation_disabled" }, status: :not_found
+      end
 
       def transitions
         @transitions ||= StageTransitionService.new

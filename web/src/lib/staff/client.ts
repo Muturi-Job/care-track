@@ -21,6 +21,8 @@ type RequestOptions = {
   headers?: Record<string, string>;
 };
 
+const advanceKeys = new Map<string, string>();
+
 async function send<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { method = "GET", body, headers = {} } = options;
 
@@ -66,12 +68,19 @@ export async function sendCreateEpisode(input: CreateEpisodeInput): Promise<Staf
   return body.episode;
 }
 
-/** A fresh Idempotency-Key per tap: one key, one stage change, however it retries. */
+/**
+ * Keep the key until a successful response: if the server advanced but the
+ * response was lost, the next tap replays that result instead of advancing twice.
+ */
 export async function sendAdvance(id: string): Promise<StaffEpisode> {
+  const key = advanceKeys.get(id) ?? newIdempotencyKey();
+  advanceKeys.set(id, key);
+
   const body = await send<{ episode: StaffEpisode }>(
     `/api/staff/episodes/${encodeURIComponent(id)}/advance`,
-    { method: "POST", headers: { "idempotency-key": newIdempotencyKey() } },
+    { method: "POST", headers: { "idempotency-key": key } },
   );
+  advanceKeys.delete(id);
 
   return body.episode;
 }

@@ -49,7 +49,7 @@ class EpisodeSerializer
 
   # The family page lives in the web app, not the API.
   def family_path
-    "/p/#{episode.tracking_code}"
+    "/f/#{episode.tracking_code}"
   end
 
   def history

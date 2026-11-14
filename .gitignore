@@ -9,6 +9,7 @@ Thumbs.db
 .env.*
 !.env.example
 !**/.env.example
+!.env.production.example
 
 # Ruby / Rails
 api/.bundle/
@@ -25,3 +26,7 @@ web/out/
 web/coverage/
 web/test-results/
 web/playwright-report/
+
+# Production backups are held outside version control.
+backups/
+docs/prototype-test/exports/

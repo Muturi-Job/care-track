@@ -1,0 +1,107 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: care_track_production
+      POSTGRES_USER: caretrack
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U caretrack -d care_track_production"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    networks:
+      - backend
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      RAILS_ENV: production
+      SECRET_KEY_BASE: ${RAILS_SECRET_KEY_BASE:?Set RAILS_SECRET_KEY_BASE in .env}
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_USERNAME: caretrack
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      CORS_ORIGINS: https://${DOMAIN:?Set DOMAIN in .env}
+      STAFF_CREATION_ENABLED: ${STAFF_CREATION_ENABLED:-true}
+      RACK_ATTACK_ENABLED: "true"
+      EPISODE_LINK_TTL_DAYS: ${EPISODE_LINK_TTL_DAYS:-7}
+      RACK_ATTACK_FAMILY_LIMIT: ${RACK_ATTACK_FAMILY_LIMIT:-30}
+      RACK_ATTACK_FAMILY_MISS_LIMIT: ${RACK_ATTACK_FAMILY_MISS_LIMIT:-10}
+      RACK_ATTACK_STAFF_LIMIT: ${RACK_ATTACK_STAFF_LIMIT:-600}
+      HOSPITAL_CONTACT_PHONE: ${HOSPITAL_CONTACT_PHONE:-0000 000 000}
+      HOSPITAL_CONTACT_TEXT: ${HOSPITAL_CONTACT_TEXT:-The care team can be reached through the ward.}
+      HOSPITAL_VISITING_TEXT: ${HOSPITAL_VISITING_TEXT:-Visiting is arranged with the ward. Please call before you visit.}
+      FAMILY_BLOCKED_WORDS: ${FAMILY_BLOCKED_WORDS:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "ruby",
+          "-rnet/http",
+          "-e",
+          "exit(Net::HTTP.get_response(URI('http://127.0.0.1:3001/api/v1/health')).is_a?(Net::HTTPSuccess) ? 0 : 1)"
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 45s
+    networks:
+      - backend
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      API_BASE_URL: http://api:3001
+      STAFF_CREATION_ENABLED: ${STAFF_CREATION_ENABLED:-true}
+      HOSPITAL_CONTACT_PHONE: ${HOSPITAL_CONTACT_PHONE:-0000 000 000}
+      NEXT_PUBLIC_POLL_INTERVAL_MS: "10000"
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - frontend
+      - backend
+
+  proxy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN:?Set DOMAIN in .env}
+      STAFF_AUTH_USER: ${STAFF_AUTH_USER:?Set STAFF_AUTH_USER in .env}
+      STAFF_AUTH_PASSWORD_HASH: ${STAFF_AUTH_PASSWORD_HASH:?Set STAFF_AUTH_PASSWORD_HASH in .env}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+    networks:
+      - frontend
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:
+
+networks:
+  frontend:
+  backend:
+    internal: true

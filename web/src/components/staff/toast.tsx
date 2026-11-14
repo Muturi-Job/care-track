@@ -36,14 +36,14 @@ export function Toast({ toast, onDismiss }: ToastProps) {
       aria-live="polite"
       className="pointer-events-none fixed inset-x-0 bottom-0 z-30 px-4 pb-4"
     >
-      <div className="pointer-events-auto mx-auto flex max-w-md items-center gap-2 rounded-2xl bg-neutral-900 p-3 text-white shadow-lg">
+      <div className="pointer-events-auto mx-auto flex max-w-md items-center gap-2 rounded-card bg-ink p-3 text-white shadow-lg">
         <p className="flex-1 px-1 text-sm text-white">{toast.text}</p>
 
         {toast.action ? (
           <button
             type="button"
             onClick={toast.action.onClick}
-            className="min-h-11 rounded-xl bg-white px-4 text-sm font-semibold text-neutral-900 hover:bg-neutral-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            className="min-h-11 rounded-control bg-paper px-4 text-sm font-semibold text-ink hover:bg-brand-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
           >
             {toast.action.label}
           </button>
@@ -53,7 +53,7 @@ export function Toast({ toast, onDismiss }: ToastProps) {
           type="button"
           onClick={onDismiss}
           aria-label="Dismiss notification"
-          className="min-h-11 min-w-11 rounded-xl text-lg text-neutral-300 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+          className="min-h-11 min-w-11 rounded-control text-lg text-white hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
         >
           ×
         </button>

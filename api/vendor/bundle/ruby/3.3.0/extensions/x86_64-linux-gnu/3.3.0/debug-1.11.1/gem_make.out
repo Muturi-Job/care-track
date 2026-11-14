@@ -1,0 +1,19 @@
+current directory: /mnt/c/Users/jobmu/Documents/SmithySystems/care-track/api/vendor/bundle/ruby/3.3.0/gems/debug-1.11.1/ext/debug
+/usr/bin/ruby3.3 -I/usr/lib/ruby/vendor_ruby extconf.rb
+creating Makefile
+
+current directory: /mnt/c/Users/jobmu/Documents/SmithySystems/care-track/api/vendor/bundle/ruby/3.3.0/gems/debug-1.11.1/ext/debug
+make DESTDIR\= sitearchdir\=./.gem.20261114-13477-qk78gm sitelibdir\=./.gem.20261114-13477-qk78gm clean
+
+current directory: /mnt/c/Users/jobmu/Documents/SmithySystems/care-track/api/vendor/bundle/ruby/3.3.0/gems/debug-1.11.1/ext/debug
+make DESTDIR\= sitearchdir\=./.gem.20261114-13477-qk78gm sitelibdir\=./.gem.20261114-13477-qk78gm
+compiling debug.c
+compiling iseq_collector.c
+linking shared-object debug/debug.so
+
+current directory: /mnt/c/Users/jobmu/Documents/SmithySystems/care-track/api/vendor/bundle/ruby/3.3.0/gems/debug-1.11.1/ext/debug
+make DESTDIR\= sitearchdir\=./.gem.20261114-13477-qk78gm sitelibdir\=./.gem.20261114-13477-qk78gm install
+/usr/bin/install -c -m 0755 debug.so ./.gem.20261114-13477-qk78gm/debug
+
+current directory: /mnt/c/Users/jobmu/Documents/SmithySystems/care-track/api/vendor/bundle/ruby/3.3.0/gems/debug-1.11.1/ext/debug
+make DESTDIR\= sitearchdir\=./.gem.20261114-13477-qk78gm sitelibdir\=./.gem.20261114-13477-qk78gm clean

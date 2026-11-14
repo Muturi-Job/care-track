@@ -18,7 +18,7 @@ describe("parseEpisode", () => {
       minutes_overdue: 3,
       status_flag: "delayed",
       delay_reason: "awaiting_bed",
-      family_path: "/p/CODE",
+      family_path: "/f/CODE",
       tracking_code: "CODE",
     });
 
@@ -36,7 +36,7 @@ describe("parseEpisode", () => {
       minutesOverdue: 3,
       statusFlag: "delayed",
       delayReason: "awaiting_bed",
-      familyPath: "/p/CODE",
+      familyPath: "/f/CODE",
     });
   });
 

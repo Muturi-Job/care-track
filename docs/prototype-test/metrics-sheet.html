@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>CareTrack procedure metrics</title>
+    <link rel="stylesheet" href="print.css">
+    <style>
+      @page { size: A4 landscape; margin: 10mm; }
+      body { max-width: 277mm; font-size: 9pt; }
+      h1 { font-size: 17pt; }
+      h2 { margin-top: 3mm; }
+      td.blank { height: 8mm; }
+      .wide { min-width: 65mm; }
+      @media screen { body { max-width: 277mm; } }
+    </style>
+  </head>
+  <body>
+    <h1>Procedure metrics sheet</h1>
+    <p class="subtitle">Use demo aliases or anonymous procedure labels. Compare similar procedures and record totals, not names or clinical details.</p>
+    <p>Date / session: <span class="line"></span> &nbsp; Observer: <span class="line"></span> &nbsp; Procedures observed: <span class="short-line"></span></p>
+
+    <h2>Operational measures</h2>
+    <table class="compact">
+      <thead>
+        <tr>
+          <th>Procedure label</th>
+          <th>Before CareTrack: time to create / prepare record</th>
+          <th>With CareTrack: time to create episode</th>
+          <th>With CareTrack: stage update times (seconds)</th>
+          <th>Before: status calls / desk inquiries</th>
+          <th>With CareTrack: status calls / desk inquiries</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td class="blank"></td><td></td><td></td><td></td><td></td><td></td></tr>
+        <tr><td class="blank"></td><td></td><td></td><td></td><td></td><td></td></tr>
+        <tr><td class="blank"></td><td></td><td></td><td></td><td></td><td></td></tr>
+        <tr><td class="blank"></td><td></td><td></td><td></td><td></td><td></td></tr>
+      </tbody>
+    </table>
+    <p>Measure creation from opening the form to successful save. Time each stage update from tap to confirmed update. Count status-related calls / desk inquiries for the full procedure in both periods; note the observation window if it differs.</p>
+
+    <h2>Family feedback collected on the page</h2>
+    <table class="compact">
+      <thead>
+        <tr><th>Procedure label (no names)</th><th>Yes</th><th>Somewhat</th><th>No</th><th>Total responses</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="blank"></td><td></td><td></td><td></td><td></td></tr>
+        <tr><td class="blank"></td><td></td><td></td><td></td><td></td></tr>
+        <tr><td class="blank"></td><td></td><td></td><td></td><td></td></tr>
+      </tbody>
+    </table>
+    <p>The page’s one-tap answers are Yes / Somewhat / No. The CSV export includes each answer and a tracking code for analysis; do not write that code on this sheet. Keep exports access-restricted and remove them when analysis is complete.</p>
+
+    <p class="banner">CareTrack prototype - demo data only</p>
+  </body>
+</html>

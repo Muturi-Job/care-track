@@ -1,21 +1,67 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f7f6f3;
-  --foreground: #1c1c1a;
+  --canvas: #f7f5f0;
+  --paper: #fffefa;
+  --ink: #17332a;
+  --muted: #4c6258;
+  --line: #d7dfd9;
+  --brand: #0b5b43;
+  --brand-strong: #064733;
+  --brand-soft: #e5efe8;
+  --brand-line: #b7cdbd;
+  --warning-soft: #f8edcf;
+  --warning-ink: #513b0c;
+  --warning-line: #d8bd77;
+  --info-soft: #e8f0ed;
+  --info-ink: #23483c;
+  --danger-soft: #fcebea;
+  --danger-ink: #7f2722;
+  --danger-line: #e7b5b1;
+  --background: var(--canvas);
+  --foreground: var(--ink);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-canvas: var(--canvas);
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-brand: var(--brand);
+  --color-brand-strong: var(--brand-strong);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-line: var(--brand-line);
+  --color-warning-soft: var(--warning-soft);
+  --color-warning-ink: var(--warning-ink);
+  --color-warning-line: var(--warning-line);
+  --color-info-soft: var(--info-soft);
+  --color-info-ink: var(--info-ink);
+  --color-danger-soft: var(--danger-soft);
+  --color-danger-ink: var(--danger-ink);
+  --color-danger-line: var(--danger-line);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --spacing-page: 1.25rem;
+  --spacing-card: 1.25rem;
+  --spacing-section: 2rem;
+  --radius-card: 1rem;
+  --radius-control: 0.65rem;
+  --text-page-title: 1.75rem;
+  --text-page-title--line-height: 2.125rem;
+  --text-section-title: 1.125rem;
+  --text-section-title--line-height: 1.5rem;
+  --text-body-copy: 1rem;
+  --text-body-copy--line-height: 1.55rem;
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1rem;
+  --shadow-card: 0 2px 8px rgb(23 51 42 / 7%);
 }
 
-/* One deliberate light theme: a calm, readable surface. No dark variant in
-   Phase A (CLAUDE.md rule 5: simplest thing that works). */
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--canvas);
+  color: var(--ink);
   font-family: var(--font-geist-sans), system-ui, sans-serif;
 }

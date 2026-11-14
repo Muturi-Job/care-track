@@ -1,0 +1,30 @@
+require 'rails_helper'
+
+<% output_attributes = attributes.reject{|attribute| [:datetime, :timestamp, :time, :date].index(attribute.type) } -%>
+RSpec.describe "<%= ns_table_name %>/index", <%= type_metatag(:view) %> do
+  before(:each) do
+    assign(:<%= table_name %>, [
+<% [1,2].each_with_index do |id, model_index| -%>
+      <%= class_name %>.create!(<%= output_attributes.empty? ? (model_index == 1 ? ')' : '),') : '' %>
+<% output_attributes.each_with_index do |attribute, attribute_index| -%>
+        <%= attribute.name %>: <%= value_for(attribute) %><%= attribute_index == output_attributes.length - 1 ? '' : ','%>
+<% end -%>
+<% if !output_attributes.empty? -%>
+      <%= model_index == 1 ? ')' : '),' %>
+<% end -%>
+<% end -%>
+    ])
+  end
+
+  it "renders a list of <%= ns_table_name %>" do
+    render
+<% if Rails.version.to_f < 8.1 -%>
+    cell_selector = 'div>p'
+<% else -%>
+    cell_selector = 'div>div>div'
+<% end -%>
+<% for attribute in output_attributes -%>
+    assert_select cell_selector, text: Regexp.new(<%= value_for(attribute) %>.to_s), count: 2
+<% end -%>
+  end
+end

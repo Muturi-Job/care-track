@@ -41,7 +41,7 @@ export function ShareLinks({ url, alias, size = "md" }: ShareLinksProps) {
         <button
           type="button"
           onClick={copy}
-          className={`${height} flex-1 rounded-xl border border-neutral-300 bg-white px-3 text-sm font-semibold text-neutral-900 hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700`}
+          className={`${height} flex-1 rounded-control border border-line bg-paper px-3 text-sm font-semibold text-ink hover:bg-brand-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand`}
         >
           {copyState === "copied" ? "Link copied" : "Copy family link"}
         </button>
@@ -50,14 +50,14 @@ export function ShareLinks({ url, alias, size = "md" }: ShareLinksProps) {
           href={whatsappShareUrl(familyShareMessage(alias, url))}
           target="_blank"
           rel="noopener noreferrer"
-          className={`${height} flex flex-1 items-center justify-center rounded-xl bg-neutral-900 px-3 text-sm font-semibold text-white hover:bg-neutral-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900`}
+          className={`${height} flex flex-1 items-center justify-center rounded-control bg-ink px-3 text-sm font-semibold text-white hover:bg-brand-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink`}
         >
           Share on WhatsApp
           <span className="sr-only"> (opens WhatsApp)</span>
         </a>
       </div>
 
-      <p aria-live="polite" className="mt-1 min-h-4 text-xs text-red-700">
+      <p aria-live="polite" className="mt-1 min-h-4 text-caption text-danger-ink">
         {copyState === "failed" ? "Could not copy. Please try again." : ""}
       </p>
     </div>

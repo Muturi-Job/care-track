@@ -9,10 +9,13 @@ Rails.application.routes.draw do
       # Public: one family member's view, reached by tracking code alone.
       get "family/:tracking_code", to: "family#show"
 
+      # Public: the page's one feedback question (answer + tracking code only).
+      post "family/:tracking_code/feedback", to: "family_feedback#create"
+
       resources :procedure_templates, only: :index
 
-      # Staff endpoints: no tracking code is involved, so they are the first
-      # place real access control will be needed.
+      # Production keeps these endpoints on the private backend network; the
+      # public reverse proxy protects the web staff routes.
       resources :episodes, only: %i[index show create update] do
         post :advance, on: :member
         post :undo, on: :member

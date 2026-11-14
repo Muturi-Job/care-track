@@ -4,9 +4,10 @@ Family members of a hospital patient follow the patient's progress through a
 procedure. Staff update the stage with one tap; family watch a calm, live
 progress page from a private link.
 
-**Phase A prototype — demo data only.** There is no authentication and no real
-patient data. Read [`CLAUDE.md`](./CLAUDE.md) before changing anything; it holds
-the non-negotiable rules.
+**Phase A prototype — demo data only.** The apps have no authentication; the
+production reverse proxy protects staff routes with hosting-level Basic Auth.
+Do not use real patient data. Read [`CLAUDE.md`](./CLAUDE.md) before changing
+anything; it holds the non-negotiable rules.
 
 ```
 api/   Rails 8 API-only + PostgreSQL   -> http://localhost:3001
@@ -52,6 +53,62 @@ docker compose up --build
 Do not run `docker compose up` and `make dev` at the same time; both bind 3000
 and 3001.
 
+## Production deployment
+
+The production stack uses the root `docker-compose.prod.yml`: Caddy obtains and
+renews HTTPS certificates, only the proxy publishes ports, and the API and
+PostgreSQL are private to the Docker network. Staff routes are protected at
+Caddy; the family page and family API stay public. No authentication is added
+to Rails or Next.js.
+
+On a fresh Linux server:
+
+1. Install Docker Engine with the Compose plugin. Point a DNS `A`/`AAAA` record
+   for your deployment domain at the server, and allow inbound TCP ports 80 and
+   443 (and UDP 443 for HTTP/3).
+2. Clone this repository, then create the server-only environment file:
+
+   ```sh
+   cp .env.production.example .env
+   chmod 600 .env
+   ```
+
+3. Generate and set strong values in `.env` for `POSTGRES_PASSWORD` and
+   `RAILS_SECRET_KEY_BASE` (`openssl rand -hex 32` and `openssl rand -hex 64`
+   respectively). Set `DOMAIN` to the DNS name from step 1. Create a staff
+   password hash with:
+
+   ```sh
+   docker run --rm caddy:2-alpine caddy hash-password --plaintext 'choose-a-long-password'
+   ```
+
+   Put the resulting hash in `STAFF_AUTH_PASSWORD_HASH` (as a single-quoted
+   `.env` value so its `$` characters stay literal) and choose a
+   `STAFF_AUTH_USER`. Keep `.env` secret; it is ignored by git.
+4. Start the stack:
+
+   ```sh
+   docker compose -f docker-compose.prod.yml up -d --build
+   docker compose -f docker-compose.prod.yml ps
+   ```
+
+   The API runs `rails db:prepare` before it starts, applying pending
+   migrations automatically. Caddy requests HTTPS certificates when the DNS
+   and firewall are ready. Check logs with
+   `docker compose -f docker-compose.prod.yml logs -f proxy api web`.
+5. Verify `https://DOMAIN/` and a family URL at `/f/<tracking-code>` open
+   without a password. `/staff` and `/api/staff/*` must prompt for the
+   configured Basic Auth credentials. The Rails API and database have no
+   published host ports; do not expose them separately.
+
+Set `STAFF_CREATION_ENABLED=false` in `.env` and re-run `docker compose -f
+docker-compose.prod.yml up -d` to turn off new-episode creation in both web and
+API. `EPISODE_LINK_TTL_DAYS` controls how many days a family link remains valid
+after discharge (default 7).
+
+For rollback, backups and demo reset instructions, see
+[`RUNBOOK.md`](./RUNBOOK.md).
+
 ## Commands
 
 | Command | What it does |
@@ -61,7 +118,7 @@ and 3001.
 | `make test` | RSpec (API) then Vitest (web) |
 | `make lint` | RuboCop + Brakeman (API), ESLint + `tsc` (web) |
 | `make db-reset` | `db:reset` — drop, recreate, migrate, seed |
-| `make seed` | Load demo data |
+| `make seed` | Add the demo data if it is not already present |
 
 Individually:
 
@@ -97,8 +154,10 @@ npm run test:e2e
 
 ## API
 
-Everything lives under `/api/v1`. There is no authentication in Phase A
-(CLAUDE.md rule 1); `ACCESS CONTROL LATER` marks where it will go.
+Everything lives under `/api/v1`. The Rails app has no authentication in Phase
+A (CLAUDE.md rule 1); production keeps it private to the Docker network and
+protects the public Next.js staff routes at Caddy. `ACCESS CONTROL LATER`
+comments mark staff code entry points.
 
 ### Staff
 
@@ -116,7 +175,7 @@ Everything lives under `/api/v1`. There is no authentication in Phase A
 
 Episodes come back as `{ "episode": { ... } }`; `GET /episodes` returns
 `{ "episodes": [ ... ] }`. Each one carries its `tracking_code` and
-`family_path` (`/p/{code}`). Single-episode responses include `history`, newest
+`family_path` (`/f/{code}`). Single-episode responses include `history`, newest
 first — one entry per `stage_event`.
 
 The staff card's primary button needs two derived fields: `next_stage_label`
@@ -235,8 +294,14 @@ shapes the screens use (camelCase, no `error` codes as copy).
   Query provider wraps the staff screens; polling uses
   `NEXT_PUBLIC_POLL_INTERVAL_MS` (default 10s). Search waits for a 300ms pause.
 
-The family page at `/p/[code]` (the links these screens share) is still Phase B;
-until then those links 404.
+Production Caddy requires Basic Auth for `/staff*` and `/api/staff*`. This is
+hosting-level protection only; Rails and Next.js contain no authentication
+code. The family route at `/f/[code]` and its `/api/family/[code]` endpoint
+remain public.
+
+Set `STAFF_CREATION_ENABLED=false` to hide the creation link and reject new
+episode requests in both the web handler and Rails API. Set
+`EPISODE_LINK_TTL_DAYS` to configure the validity period after discharge.
 
 ## Data model
 
@@ -251,28 +316,34 @@ All four use UUID primary keys. Fields are deliberately minimal (CLAUDE.md
 rule 2): no diagnoses, notes, results, ID numbers or images.
 
 `db/seeds.rb` creates two templates (Day Surgery, Orthopaedic Surgery) with nine
-stages each, plus three episodes at different stages, and prints a
-`/p/{tracking_code}` link for each.
+stages each, plus three episodes at different stages, and prints an
+`/f/{tracking_code}` link for each. `bin/rails demo:reset` clears all episodes
+and feedback responses, then recreates this clean training set.
 
 ## Environment
 
-Copy the examples and edit if your setup differs. No secrets exist yet, because
-Phase A has no authentication.
+Copy the development examples and edit if your setup differs. Production
+deployment additionally uses the root `.env` copied from
+`.env.production.example` for database credentials, Rails key, domain and
+reverse-proxy staff credentials.
 
 `api/.env` — `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_USERNAME`,
 `DATABASE_PASSWORD`, `CORS_ORIGINS`, `RACK_ATTACK_ENABLED`,
 `RACK_ATTACK_FAMILY_LIMIT`, `RACK_ATTACK_FAMILY_MISS_LIMIT`,
-`RACK_ATTACK_STAFF_LIMIT`, `EPISODE_LINK_TTL_DAYS`, `HOSPITAL_CONTACT_PHONE`,
+`RACK_ATTACK_STAFF_LIMIT`, `STAFF_CREATION_ENABLED`,
+`EPISODE_LINK_TTL_DAYS`, `HOSPITAL_CONTACT_PHONE`,
 `HOSPITAL_CONTACT_TEXT`, `HOSPITAL_VISITING_TEXT`, `FAMILY_BLOCKED_WORDS`.
 
-`web/.env.local` — `API_BASE_URL`, `NEXT_PUBLIC_POLL_INTERVAL_MS`.
+`web/.env.local` — `API_BASE_URL`, `NEXT_PUBLIC_POLL_INTERVAL_MS`,
+`STAFF_CREATION_ENABLED`.
 
 ## Tests
 
 - `api/spec` — RSpec: health contract, CORS allow/deny, stage sequence rules,
   tracking codes, delay/status rules, event idempotency, every
   `StageTransitionService` rule (advance, terminal stage, idempotent replay,
-  undo window, flags), the episode endpoints, real threaded concurrency, the
+  undo window, flags), the episode endpoints, the 30-day data cleanup task,
+  real threaded concurrency, the
   family payload (exact key set, stage states, wording, ETag/304, 404 and 410),
   both Rack::Attack limits, and the blocked-word check over
   `FamilyMessageCatalog`.
@@ -304,5 +375,6 @@ not leak between them.
 - Test databases: `care_track_test`; development: `care_track_development`.
 - `next build` does not need a running API: the home page is forced dynamic and
   treats an unreachable API as `unavailable`.
-- Further access control and the family progress page (`/p/[code]`) are Phase B
-  — the places to add them are marked `ACCESS CONTROL LATER` in the code.
+- Authentication is intentionally not implemented in either app. The
+  production proxy protects `/staff*` and `/api/staff*`; the API stays private
+  on the Docker network.

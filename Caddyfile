@@ -1,0 +1,10 @@
+{$DOMAIN} {
+	encode zstd gzip
+
+	@staff path /staff /staff/* /api/staff /api/staff/*
+	basic_auth @staff {
+		{$STAFF_AUTH_USER} {$STAFF_AUTH_PASSWORD_HASH}
+	}
+
+	reverse_proxy web:3000
+}

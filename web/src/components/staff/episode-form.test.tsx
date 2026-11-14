@@ -46,7 +46,7 @@ describe("EpisodeForm", () => {
   it("creates the episode and shows the family link with the sharing reminder", async () => {
     const onCreate = renderForm(
       vi.fn().mockResolvedValue(
-        makeEpisode({ alias: "Patient B", familyPath: "/p/NEWCODE234" }),
+        makeEpisode({ alias: "Patient B", familyPath: "/f/NEWCODE234" }),
       ),
     );
 
@@ -60,7 +60,7 @@ describe("EpisodeForm", () => {
       bed: "Ward 1, Bed 1",
       procedureTemplateId: "template-2",
     });
-    expect(screen.getByText(`${ORIGIN}/p/NEWCODE234`)).toBeTruthy();
+    expect(screen.getByText(`${ORIGIN}/f/NEWCODE234`)).toBeTruthy();
     expect(screen.getByRole("link", { name: /Share on WhatsApp/ })).toBeTruthy();
     expect(screen.getByText("Only share with people the patient has agreed to.")).toBeTruthy();
   });

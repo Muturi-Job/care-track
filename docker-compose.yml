@@ -20,7 +20,9 @@ services:
       retries: 10
 
   api:
-    build: ./api
+    build:
+      context: ./api
+      dockerfile: Dockerfile.dev
     ports:
       - "3001:3001"
     environment:
@@ -31,6 +33,7 @@ services:
       DATABASE_PASSWORD: postgres
       CORS_ORIGINS: http://localhost:3000
       RACK_ATTACK_ENABLED: "true"
+      HOSPITAL_CONTACT_PHONE: ${HOSPITAL_CONTACT_PHONE:-0000 000 000}
     volumes:
       - ./api:/app
       - bundle:/usr/local/bundle
@@ -40,11 +43,14 @@ services:
     command: sh -c "bundle exec rails db:prepare && bundle exec rails server -b 0.0.0.0 -p 3001"
 
   web:
-    build: ./web
+    build:
+      context: ./web
+      dockerfile: Dockerfile.dev
     ports:
       - "3000:3000"
     environment:
       API_BASE_URL: http://api:3001
+      HOSPITAL_CONTACT_PHONE: ${HOSPITAL_CONTACT_PHONE:-0000 000 000}
     volumes:
       - ./web:/app
       - /app/node_modules

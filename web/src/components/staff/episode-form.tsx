@@ -25,7 +25,7 @@ const episodeSchema = z.object({
 type EpisodeFormValues = z.infer<typeof episodeSchema>;
 
 const INPUT_CLASS =
-  "mt-1 h-12 w-full rounded-xl border border-neutral-300 bg-white px-3 text-base text-neutral-900 placeholder:text-neutral-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700";
+  "mt-1 h-12 w-full rounded-control border border-line bg-paper px-3 text-base text-ink placeholder:text-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand";
 
 export type EpisodeFormProps = {
   procedures: ProcedureOption[];
@@ -71,29 +71,29 @@ export function EpisodeForm({ procedures, origin, onCreate = sendCreateEpisode }
 
     return (
       <section aria-live="polite" className="space-y-4">
-        <h2 className="text-xl font-semibold text-neutral-900">Episode created</h2>
+        <h2 className="text-xl font-semibold text-ink">Episode created</h2>
 
-        <p className="text-sm text-neutral-700">
+        <p className="text-sm text-muted">
           {created.alias} · {created.bed} · {created.procedureName}
         </p>
 
-        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-          <p className="text-sm font-medium text-emerald-900">Family link</p>
-          <p className="mt-1 break-all text-sm text-emerald-950">{url}</p>
+        <div className="rounded-card border border-brand-line bg-brand-soft p-card">
+          <p className="text-sm font-semibold text-ink">Family link</p>
+          <p className="mt-1 break-all text-sm text-ink">{url}</p>
 
           <div className="mt-3">
             <ShareLinks url={url} alias={created.alias} />
           </div>
         </div>
 
-        <p className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+        <p className="rounded-card border border-warning-line bg-warning-soft p-card text-sm text-warning-ink">
           Only share with people the patient has agreed to.
         </p>
 
         <div className="flex flex-col gap-2">
           <Link
             href="/staff"
-            className="flex min-h-12 items-center justify-center rounded-xl bg-emerald-700 px-4 text-base font-semibold text-white shadow-sm hover:bg-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800"
+            className="flex min-h-12 items-center justify-center rounded-control bg-brand px-4 text-base font-semibold text-white shadow-card hover:bg-brand-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-strong"
           >
             Open staff list
           </Link>
@@ -101,7 +101,7 @@ export function EpisodeForm({ procedures, origin, onCreate = sendCreateEpisode }
           <button
             type="button"
             onClick={createAnother}
-            className="flex min-h-12 items-center justify-center rounded-xl border border-neutral-300 bg-white px-4 text-base font-semibold text-neutral-900 hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700"
+            className="flex min-h-12 items-center justify-center rounded-control border border-line bg-paper px-4 text-base font-semibold text-ink hover:bg-brand-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
           >
             Create another episode
           </button>
@@ -113,7 +113,7 @@ export function EpisodeForm({ procedures, origin, onCreate = sendCreateEpisode }
   return (
     <form onSubmit={handleSubmit(submit)} noValidate className="space-y-4">
       <div>
-        <label htmlFor="patient-alias" className="block text-sm font-medium text-neutral-900">
+        <label htmlFor="patient-alias" className="block text-sm font-semibold text-ink">
           Patient alias or first name
         </label>
         <input
@@ -127,7 +127,7 @@ export function EpisodeForm({ procedures, origin, onCreate = sendCreateEpisode }
           {...register("alias")}
         />
         {errors.alias ? (
-          <p id="patient-alias-error" className="mt-1 text-sm text-red-700">
+          <p id="patient-alias-error" className="mt-1 text-sm text-danger-ink">
             {errors.alias.message}
           </p>
         ) : null}
@@ -136,13 +136,13 @@ export function EpisodeForm({ procedures, origin, onCreate = sendCreateEpisode }
       {procedures.length === 0 ? (
         <p
           role="alert"
-          className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900"
+          className="rounded-control border border-warning-line bg-warning-soft p-3 text-sm text-warning-ink"
         >
           No procedures are available yet.
         </p>
       ) : (
         <div>
-          <label htmlFor="procedure" className="block text-sm font-medium text-neutral-900">
+          <label htmlFor="procedure" className="block text-sm font-semibold text-ink">
             Procedure
           </label>
           <select
@@ -158,13 +158,13 @@ export function EpisodeForm({ procedures, origin, onCreate = sendCreateEpisode }
             ))}
           </select>
           {errors.procedureTemplateId ? (
-            <p className="mt-1 text-sm text-red-700">{errors.procedureTemplateId.message}</p>
+            <p className="mt-1 text-sm text-danger-ink">{errors.procedureTemplateId.message}</p>
           ) : null}
         </div>
       )}
 
       <div>
-        <label htmlFor="ward-or-bed" className="block text-sm font-medium text-neutral-900">
+        <label htmlFor="ward-or-bed" className="block text-sm font-semibold text-ink">
           Ward or bed
         </label>
         <input
@@ -178,14 +178,14 @@ export function EpisodeForm({ procedures, origin, onCreate = sendCreateEpisode }
           {...register("bed")}
         />
         {errors.bed ? (
-          <p id="ward-or-bed-error" className="mt-1 text-sm text-red-700">
+          <p id="ward-or-bed-error" className="mt-1 text-sm text-danger-ink">
             {errors.bed.message}
           </p>
         ) : null}
       </div>
 
       {failure ? (
-        <p role="alert" className="rounded-xl border border-red-300 bg-red-50 p-3 text-sm text-red-800">
+        <p role="alert" className="rounded-control border border-danger-line bg-danger-soft p-3 text-sm text-danger-ink">
           {failure}
         </p>
       ) : null}
@@ -193,7 +193,7 @@ export function EpisodeForm({ procedures, origin, onCreate = sendCreateEpisode }
       <button
         type="submit"
         disabled={isSubmitting || procedures.length === 0}
-        className="flex min-h-12 w-full items-center justify-center rounded-xl bg-emerald-700 px-4 text-base font-semibold text-white shadow-sm hover:bg-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 disabled:cursor-not-allowed disabled:bg-neutral-300 disabled:text-neutral-700"
+        className="flex min-h-12 w-full items-center justify-center rounded-control bg-brand px-4 text-base font-semibold text-white shadow-card hover:bg-brand-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-strong disabled:cursor-not-allowed disabled:bg-line disabled:text-muted"
       >
         {isSubmitting ? "Creating…" : "Create episode"}
       </button>

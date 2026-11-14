@@ -24,7 +24,7 @@ RSpec.describe "API episode endpoints", type: :request do
       )
       expect(payload["minutes_in_current_stage"]).to be_a(Integer)
       expect(payload["tracking_code"]).to be_present
-      expect(payload["family_path"]).to eq("/p/#{payload['tracking_code']}")
+      expect(payload["family_path"]).to eq("/f/#{payload['tracking_code']}")
       expect(payload).not_to have_key("history")
     end
 
@@ -129,7 +129,7 @@ RSpec.describe "API episode endpoints", type: :request do
       expect(response).to have_http_status(:created)
       payload = episode_json
       expect(payload["tracking_code"]).to match(/\A[A-HJ-NP-Z2-9]{10}\z/)
-      expect(payload["family_path"]).to eq("/p/#{payload['tracking_code']}")
+      expect(payload["family_path"]).to eq("/f/#{payload['tracking_code']}")
       expect(payload["current_stage_position"]).to eq(1)
       expect(payload["stage_label"]).to eq("Admitted")
       expect(payload["history"]).to eq([])
@@ -145,6 +145,31 @@ RSpec.describe "API episode endpoints", type: :request do
       }
 
       expect(response).to have_http_status(:created)
+    end
+
+    it "disables creation when STAFF_CREATION_ENABLED is false" do
+      previous_value = ENV["STAFF_CREATION_ENABLED"]
+      ENV["STAFF_CREATION_ENABLED"] = "false"
+      template = create(:procedure_template)
+
+      expect do
+        post "/api/v1/episodes", params: {
+          episode: {
+            patient_alias: "Patient B",
+            ward_or_bed: "Ward 1",
+            procedure_template_id: template.id
+          }
+        }
+      end.not_to change(Episode, :count)
+
+      expect(response).to have_http_status(:not_found)
+      expect(response.parsed_body["error"]).to eq("staff_creation_disabled")
+    ensure
+      if previous_value.nil?
+        ENV.delete("STAFF_CREATION_ENABLED")
+      else
+        ENV["STAFF_CREATION_ENABLED"] = previous_value
+      end
     end
 
     it "rejects a missing alias" do

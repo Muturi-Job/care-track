@@ -33,7 +33,7 @@ import { Toast, type ToastMessage } from "./toast";
 const LIST_QUERY_KEY = "staff-episodes";
 const SEARCH_DEBOUNCE_MS = 300;
 
-type ListData = { episodes: StaffEpisode[] };
+type ListData = StaffEpisode[];
 
 type FlagVariables = {
   episode: StaffEpisode;
@@ -61,7 +61,7 @@ export function StaffEpisodes({ origin }: { origin: string }) {
 
   const writeLists = (update: (episodes: StaffEpisode[]) => StaffEpisode[]) => {
     queryClient.setQueriesData<ListData>({ queryKey: [LIST_QUERY_KEY] }, (data) =>
-      data === undefined ? data : { episodes: update(data.episodes) },
+      data === undefined ? data : update(data),
     );
   };
 
@@ -149,7 +149,7 @@ export function StaffEpisodes({ origin }: { origin: string }) {
   return (
     <div>
       <div className="mt-4">
-        <label htmlFor="staff-search" className="block text-sm font-medium text-neutral-900">
+        <label htmlFor="staff-search" className="block text-sm font-semibold text-ink">
           Search
         </label>
         <input
@@ -158,24 +158,24 @@ export function StaffEpisodes({ origin }: { origin: string }) {
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           placeholder="Patient alias or bed"
-          className="mt-1 h-12 w-full rounded-xl border border-neutral-300 bg-white px-3 text-base text-neutral-900 placeholder:text-neutral-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700"
+          className="mt-1 h-12 w-full rounded-control border border-line bg-paper px-3 text-base text-ink placeholder:text-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
         />
-        <p className="mt-1 text-xs text-neutral-600">Updates automatically.</p>
+        <p className="mt-1 text-caption text-muted">Updates automatically.</p>
       </div>
 
       {episodesQuery.isPending ? (
-        <p role="status" className="mt-6 text-sm text-neutral-700">
+        <p role="status" className="mt-6 text-sm text-muted">
           Loading episodes…
         </p>
       ) : null}
 
       {episodesQuery.isError ? (
-        <div role="alert" className="mt-6 rounded-2xl border border-amber-300 bg-amber-50 p-4">
-          <p className="text-sm text-amber-900">Could not load episodes. Please try again.</p>
+        <div role="alert" className="mt-6 rounded-card border border-warning-line bg-warning-soft p-card">
+          <p className="text-sm text-warning-ink">Could not load episodes. Please try again.</p>
           <button
             type="button"
             onClick={() => episodesQuery.refetch()}
-            className="mt-3 min-h-11 rounded-xl border border-neutral-300 bg-white px-4 text-sm font-semibold text-neutral-900 hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700"
+            className="mt-3 min-h-11 rounded-control border border-line bg-paper px-4 text-sm font-semibold text-ink hover:bg-brand-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
           >
             Try again
           </button>
@@ -183,14 +183,14 @@ export function StaffEpisodes({ origin }: { origin: string }) {
       ) : null}
 
       {!episodesQuery.isPending && !episodesQuery.isError && episodes.length === 0 ? (
-        <p className="mt-6 rounded-2xl border border-neutral-200 bg-white p-4 text-sm text-neutral-700">
+        <p className="mt-6 rounded-card border border-line bg-paper p-card text-sm text-muted">
           {debouncedSearch.trim() === ""
             ? "No active episodes yet."
             : `No episodes match “${debouncedSearch.trim()}”.`}
         </p>
       ) : null}
 
-      <ul className="mt-4 space-y-4">
+      <ul className="mt-5 space-y-4">
         {episodes.map((episode) => (
           <li key={episode.id}>
             <EpisodeCard
