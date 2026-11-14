@@ -97,9 +97,53 @@ npm run test:e2e
 
 ## API
 
+Everything lives under `/api/v1`. There is no authentication in Phase A
+(CLAUDE.md rule 1); `ACCESS CONTROL LATER` marks where it will go.
+
+### Staff
+
 | Endpoint | Purpose |
 | --- | --- |
-| `GET /api/v1/health` | Liveness + database check, no patient data |
+| `GET /procedure_templates` | Templates with their ordered stages |
+| `GET /episodes` | Active episodes, most urgent first; `?q=` matches alias or bed |
+| `POST /episodes` | Create from `patient_alias`, `procedure_template_id`, `ward_or_bed` |
+| `PATCH /episodes/:id` | Change the alias or ward/bed only |
+| `POST /episodes/:id/advance` | Move one stage; requires an `Idempotency-Key` header |
+| `POST /episodes/:id/undo` | Reverse the latest advance, if it is under two minutes old |
+| `POST /episodes/:id/flag` | Set `status_flag` (`delayed` or `call_care_team`) and optional `delay_reason` |
+| `POST /episodes/:id/flag/clear` | Return the episode to `normal` |
+
+Episodes come back as `{ "episode": { ... } }`; `GET /episodes` returns
+`{ "episodes": [ ... ] }`. Each one carries its `tracking_code` and
+`family_path` (`/p/{code}`). Single-episode responses include `history`, newest
+first — one entry per `stage_event`.
+
+`GET /episodes` lists flagged and overdue episodes first (overdue means: in the
+current stage longer than that stage's `expected_minutes`) and omits discharged
+episodes. Search is a case-insensitive `ILIKE`; `%` and `_` are literal.
+
+### Rules
+
+- `advance` takes a row lock and requires an `Idempotency-Key`. Repeating a key
+  returns the original result and writes no second event; using another
+  episode's key is a `409`.
+- Entering the terminal stage sets `discharged_at` and `link_expires_at`
+  (`EPISODE_LINK_TTL_DAYS`, default 7).
+- `undo` works only when the latest position change was an advance less than two
+  minutes ago, and only once per advance.
+- Every accepted change writes a `stage_event`. Repeating the current flag, or
+  clearing an already-clear flag, changes nothing, so it writes no event.
+  Alias and bed edits are not stage events.
+
+Errors look like `{ "error": "terminal_stage", "message": "..." }`: `400`
+missing key, `404` unknown episode, `409` key conflict, `422` a rule rejected
+the change.
+
+### Health
+
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /health` | Liveness + database check, no patient data |
 
 ```json
 { "status": "ok", "database": "ok", "checked_at": "2026-11-14T06:00:00Z" }
@@ -131,19 +175,24 @@ Phase A has no authentication.
 
 `api/.env` — `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_USERNAME`,
 `DATABASE_PASSWORD`, `CORS_ORIGINS`, `RACK_ATTACK_ENABLED`,
-`RACK_ATTACK_FAMILY_LIMIT`, `RACK_ATTACK_STAFF_LIMIT`.
+`RACK_ATTACK_FAMILY_LIMIT`, `RACK_ATTACK_STAFF_LIMIT`,
+`EPISODE_LINK_TTL_DAYS`.
 
 `web/.env.local` — `API_BASE_URL`, `NEXT_PUBLIC_POLL_INTERVAL_MS`.
 
 ## Tests
 
-- `api/spec` — RSpec: health endpoint contract, CORS allow/deny, stage
-  sequence rules, tracking codes, delay/status rules, event idempotency.
+- `api/spec` — RSpec: health contract, CORS allow/deny, stage sequence rules,
+  tracking codes, delay/status rules, event idempotency, every
+  `StageTransitionService` rule (advance, terminal stage, idempotent replay,
+  undo window, flags), the episode endpoints, and real threaded concurrency.
 - `web/src/**/*.test.ts(x)` — Vitest: health payload mapping, prototype banner.
 - `web/e2e` — Playwright: home page shows the banner and `API: ok`.
 
-Remaining business rules (family payload shape, rate limiting, stage
-transitions) get their specs as those endpoints land.
+The concurrency specs (and only those) run without transactional fixtures so
+two threads can see each other's commits; they clean up after themselves.
+Remaining Phase B behaviour — the family payload and its rate limit — gets
+specs as that endpoint lands.
 
 ## CI
 
@@ -159,5 +208,5 @@ transitions) get their specs as those endpoints land.
 - Test databases: `care_track_test`; development: `care_track_development`.
 - `next build` does not need a running API: the home page is forced dynamic and
   treats an unreachable API as `unavailable`.
-- Further access control, tracking codes and stage updates are Phase B — the
+- Further access control and the family-facing endpoints are Phase B — the
   places to add them are marked `ACCESS CONTROL LATER` in the code.

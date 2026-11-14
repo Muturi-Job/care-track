@@ -67,12 +67,14 @@ care-track/
   CLAUDE.md  README.md  Makefile  docker-compose.yml
   .github/workflows/ci.yml  lint + test + build for both apps
   api/                      Rails 8 API, RSpec (bin/rails generated with --skip-test)
-    app/controllers/api/v1/   health, then staff episodes + family progress
+    app/controllers/api/v1/   health, staff episodes + family progress
     app/models/               ProcedureTemplate, StageTemplate, Episode, StageEvent
+    app/services/             StageTransitionService (every stage/flag change)
+    app/serializers/          Episode + ProcedureTemplate JSON
     app/validators/           StageSequenceValidator (contiguous, one terminal)
     config/initializers/      cors.rb, rack_attack.rb
     db/                       migrations, seeds.rb
-    spec/                     model + request specs, factories
+    spec/                     model, service, request specs, factories
     .env.example
   web/                      Next.js App Router, src/ directory
     src/app/                  layout (banner), page, p/[code]/page.tsx
@@ -117,6 +119,7 @@ CORS_ORIGINS=http://localhost:3000
 RACK_ATTACK_ENABLED=true
 RACK_ATTACK_FAMILY_LIMIT=60          # requests per IP per hour
 RACK_ATTACK_STAFF_LIMIT=600
+EPISODE_LINK_TTL_DAYS=7             # family link lifetime after discharge
 
 # web/.env.example
 API_BASE_URL=http://localhost:3001

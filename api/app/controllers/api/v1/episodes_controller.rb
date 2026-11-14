@@ -1,0 +1,115 @@
+module Api
+  module V1
+    # Staff-facing episode endpoints. No authentication in Phase A.
+    class EpisodesController < ApplicationController
+      # ACCESS CONTROL LATER: every action here is staff-only in a real system;
+      # add authentication and an authorisation policy before use with patients.
+      rescue_from StageTransitionService::Rejected, with: :render_rejected
+
+      def index
+        now = Time.current
+        episodes = Episode.active.includes(procedure_template: :stage_templates)
+        episodes = episodes.search(params[:q]) if params[:q].present?
+
+        ordered = episodes.sort_by do |episode|
+          [ episode.attention_rank(now: now), -episode.minutes_overdue(now: now), episode.created_at ]
+        end
+
+        render json: { episodes: ordered.map { |episode| serialize(episode, now: now) } }
+      end
+
+      def create
+        episode = Episode.new(create_params)
+
+        if episode.save
+          render_episode(episode, status: :created)
+        else
+          render_validation_errors(episode)
+        end
+      end
+
+      def update
+        episode = Episode.find(params[:id])
+
+        if episode.update(update_params)
+          render_episode(episode)
+        else
+          render_validation_errors(episode)
+        end
+      end
+
+      def advance
+        result = transitions.advance(
+          episode_id: params[:id],
+          idempotency_key: request.headers["Idempotency-Key"]
+        )
+
+        render_episode(result.episode)
+      end
+
+      def undo
+        result = transitions.undo(episode_id: params[:id])
+
+        render_episode(result.episode)
+      end
+
+      def flag
+        result = transitions.flag(
+          episode_id: params[:id],
+          status_flag: flag_params[:status_flag],
+          delay_reason: flag_params[:delay_reason]
+        )
+
+        render_episode(result.episode)
+      end
+
+      def clear_flag
+        result = transitions.clear_flag(episode_id: params[:id])
+
+        render_episode(result.episode)
+      end
+
+      private
+
+      def transitions
+        @transitions ||= StageTransitionService.new
+      end
+
+      def serialize(episode, include_history: true, now: Time.current)
+        EpisodeSerializer.new(episode, include_history: include_history, now: now).as_json
+      end
+
+      def render_episode(episode, status: :ok)
+        render json: { episode: serialize(episode) }, status: status
+      end
+
+      def render_validation_errors(episode)
+        render json: { error: "invalid_episode", details: episode.errors.to_hash },
+               status: 422
+      end
+
+      def render_rejected(error)
+        render json: { error: error.code.to_s, message: error.message }, status: error.http_status
+      end
+
+      # Accepts {"episode": {...}} or a bare body, so simple clients are not
+      # forced into a wrapper.
+      def create_params
+        source.permit(:patient_alias, :procedure_template_id, :ward_or_bed)
+      end
+
+      # Alias and bed only: the procedure is fixed once an episode exists.
+      def update_params
+        source.permit(:patient_alias, :ward_or_bed)
+      end
+
+      def flag_params
+        source.permit(:status_flag, :delay_reason)
+      end
+
+      def source
+        params[:episode].present? ? params[:episode] : params
+      end
+    end
+  end
+end

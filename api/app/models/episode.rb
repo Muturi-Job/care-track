@@ -5,11 +5,16 @@ class Episode < ApplicationRecord
   TRACKING_CODE_LENGTH = 10
   TRACKING_CODE_FORMAT = /\A[#{TRACKING_CODE_ALPHABET.join}]{#{TRACKING_CODE_LENGTH}}\z/
 
-  LINK_TTL = 7.days
-
   belongs_to :procedure_template
   has_many :stage_events, dependent: :destroy
   has_many :stage_templates, through: :procedure_template
+
+  # "Active" is the staff list's definition: not yet discharged.
+  scope :active, -> { where(discharged_at: nil) }
+  scope :search, ->(query) do
+    term = "%#{sanitize_sql_like(query.to_s.strip)}%"
+    where("patient_alias ILIKE :term OR ward_or_bed ILIKE :term", term: term)
+  end
 
   enum :status_flag, {
     normal: "normal",
@@ -44,8 +49,47 @@ class Episode < ApplicationRecord
     end.join
   end
 
+  # How long a family link stays valid, in days (env-configurable). Falls back
+  # to seven days if the value is missing or not a positive number.
+  def self.link_ttl
+    days = ENV.fetch("EPISODE_LINK_TTL_DAYS", 7).to_i
+    (days.positive? ? days : 7).days
+  end
+
   def current_stage_template
     procedure_template.stage_at(current_stage_position)
+  end
+
+  # When the episode arrived in its current stage: the last position-changing
+  # event, or creation time if it has never moved. Derived from history rather
+  # than updated_at, which also moves on alias edits and flags.
+  #
+  # Cached for the life of this instance. Every position change goes through
+  # StageTransitionService on a freshly locked row, so the episode a response
+  # serialises always has a fresh cache.
+  def stage_entered_at
+    @stage_entered_at ||= stage_events
+      .where(event_type: %w[advanced undone])
+      .maximum(:occurred_at) || created_at
+  end
+
+  def minutes_in_current_stage(now: Time.current)
+    [ (now - stage_entered_at).to_i / 60, 0 ].max
+  end
+
+  def minutes_overdue(now: Time.current)
+    expected = current_stage_template&.expected_minutes
+    return 0 if expected.nil?
+
+    [ minutes_in_current_stage(now: now) - expected, 0 ].max
+  end
+
+  # 0 = needs attention (flagged), 1 = overdue, 2 = on track. The staff list
+  # sorts on this so the episodes that need a person come first.
+  def attention_rank(now: Time.current)
+    return 0 unless normal?
+
+    minutes_overdue(now: now).positive? ? 1 : 2
   end
 
   def expired?
@@ -68,7 +112,7 @@ class Episode < ApplicationRecord
   end
 
   def assign_link_expiry
-    self.link_expires_at ||= LINK_TTL.from_now
+    self.link_expires_at ||= self.class.link_ttl.from_now
   end
 
   def delay_reason_only_when_delayed
