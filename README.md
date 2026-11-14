@@ -108,6 +108,22 @@ npm run test:e2e
 `status` is `ok` or `degraded` (the API answered but the database did not).
 The web app calls this server-side only; the browser never talks to the API.
 
+## Data model
+
+| Table | Purpose |
+| --- | --- |
+| `procedure_templates` | A procedure type and whether staff can use it |
+| `stage_templates` | Ordered, plain-language stages for one procedure |
+| `episodes` | One patient's journey; `tracking_code` is the family's access |
+| `stage_events` | What staff did, when, and an optional idempotency key |
+
+All four use UUID primary keys. Fields are deliberately minimal (CLAUDE.md
+rule 2): no diagnoses, notes, results, ID numbers or images.
+
+`db/seeds.rb` creates two templates (Day Surgery, Orthopaedic Surgery) with nine
+stages each, plus three episodes at different stages, and prints a
+`/p/{tracking_code}` link for each.
+
 ## Environment
 
 Copy the examples and edit if your setup differs. No secrets exist yet, because
@@ -121,12 +137,13 @@ Phase A has no authentication.
 
 ## Tests
 
-- `api/spec` — RSpec: health endpoint contract, CORS allow/deny.
+- `api/spec` — RSpec: health endpoint contract, CORS allow/deny, stage
+  sequence rules, tracking codes, delay/status rules, event idempotency.
 - `web/src/**/*.test.ts(x)` — Vitest: health payload mapping, prototype banner.
 - `web/e2e` — Playwright: home page shows the banner and `API: ok`.
 
-Business rules (stages, tracking codes, rate limits) get their tests in Phase B
-as those features land.
+Remaining business rules (family payload shape, rate limiting, stage
+transitions) get their specs as those endpoints land.
 
 ## CI
 

@@ -49,17 +49,16 @@ One monorepo, two independently runnable apps. The browser only ever talks to
 
 ## Stage vocabulary
 
-Fixed set, defined once in `api/app/models/episode.rb` and mirrored in
-`web/src/lib/stages.ts`. Any value outside this set is unknown → rule 4 fallback.
+Stages are data, not an enum: each `procedure_template` owns an ordered list of
+`stage_templates` (positions `1..n`, exactly one terminal stage), enforced by
+`StageSequenceValidator`. Family copy lives on the stage itself (`label`,
+`family_explanation`), so changing wording is a data change, not a code change.
+Both seed templates share nine stages: Admitted, Preparing, Heading to theatre,
+Procedure started, Procedure complete, In recovery, Moved to ward, Ready for
+visitors, Discharged.
 
-| key | family label |
-| --- | --- |
-| `checked_in` | Checked in |
-| `getting_ready` | Getting ready |
-| `underway` | Procedure under way |
-| `recovering` | Recovering |
-| `finishing_up` | Finishing up |
-| `done` | All done |
+`episodes.current_stage_position` points into its template's sequence. Any
+stage the page cannot explain is unknown → rule 4 fallback copy.
 
 ## Folder structure
 
@@ -69,10 +68,11 @@ care-track/
   .github/workflows/ci.yml  lint + test + build for both apps
   api/                      Rails 8 API, RSpec (bin/rails generated with --skip-test)
     app/controllers/api/v1/   health, then staff episodes + family progress
-    app/models/               Episode, Stage (value list + transitions)
+    app/models/               ProcedureTemplate, StageTemplate, Episode, StageEvent
+    app/validators/           StageSequenceValidator (contiguous, one terminal)
     config/initializers/      cors.rb, rack_attack.rb
     db/                       migrations, seeds.rb
-    spec/                     model + request specs
+    spec/                     model + request specs, factories
     .env.example
   web/                      Next.js App Router, src/ directory
     src/app/                  layout (banner), page, p/[code]/page.tsx
@@ -129,6 +129,8 @@ NEXT_PUBLIC_POLL_INTERVAL_MS=10000
       lockfile, and an `ACCESS CONTROL LATER` comment sits at each entry point.
 - [ ] `episodes` table holds no field beyond the rule 2 list; migration reviewed
       against it.
+- [ ] Stage sequence is contiguous `1..n` with exactly one terminal stage;
+      `bundle exec rspec` proves it.
 - [ ] Tracking code is random, unique-indexed, non-enumerable; family route
       works with the code alone and 404s otherwise.
 - [ ] Family API response contains only: alias, bed, procedure, stage, updated
