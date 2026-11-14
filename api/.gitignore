@@ -1,0 +1,14 @@
+# See https://guides.rubyonrails.org/configuring.html
+/.bundle
+/log/*
+/tmp/*
+/storage/*
+/coverage
+
+# Environment files: only the example is committed (CLAUDE.md rule 6).
+.env
+.env.*
+!.env.example
+
+# Ignore key files for the local credentials store.
+/config/master.key

@@ -1,0 +1,23 @@
+#!/usr/bin/env ruby
+require "fileutils"
+
+APP_ROOT = File.expand_path("..", __dir__)
+ENV["RAILS_ENV"] ||= "development"
+
+def system!(*args)
+  system(*args, exception: true)
+end
+
+FileUtils.chdir(APP_ROOT) do
+  system! "gem install bundler --conservative"
+  system! "bundle check || bundle install"
+
+  unless File.exist?(".env")
+    FileUtils.cp(".env.example", ".env")
+    puts "Created .env from .env.example"
+  end
+
+  system! "bin/rails db:prepare"
+
+  puts "\nAPI ready. Start it with: bin/rails server -p 3001"
+end

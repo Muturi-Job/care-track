@@ -1,0 +1,9 @@
+.git
+.bundle
+log/*
+tmp/*
+storage/*
+coverage
+.env
+.env.*
+!.env.example

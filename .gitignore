@@ -1,0 +1,27 @@
+# OS / editor noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Environment files. Only the examples are committed (CLAUDE.md rule 6).
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+# Ruby / Rails
+api/.bundle/
+api/log/*
+api/tmp/*
+api/storage/*
+api/coverage/
+api/config/master.key
+
+# Node / Next.js / tests
+web/node_modules/
+web/.next/
+web/out/
+web/coverage/
+web/test-results/
+web/playwright-report/

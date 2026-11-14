@@ -1,0 +1,57 @@
+# Local development stack. Phase A prototype - demo data only.
+#
+# `docker compose up` runs everything; `make dev` runs the apps natively and
+# only needs the postgres service (`docker compose up -d postgres`).
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: care_track_development
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: ./api
+    ports:
+      - "3001:3001"
+    environment:
+      RAILS_ENV: development
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_USERNAME: postgres
+      DATABASE_PASSWORD: postgres
+      CORS_ORIGINS: http://localhost:3000
+      RACK_ATTACK_ENABLED: "true"
+    volumes:
+      - ./api:/app
+      - bundle:/usr/local/bundle
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: sh -c "bundle exec rails db:prepare && bundle exec rails server -b 0.0.0.0 -p 3001"
+
+  web:
+    build: ./web
+    ports:
+      - "3000:3000"
+    environment:
+      API_BASE_URL: http://api:3001
+    volumes:
+      - ./web:/app
+      - /app/node_modules
+    depends_on:
+      - api
+    command: npm run dev -- --hostname 0.0.0.0
+
+volumes:
+  pgdata:
+  bundle:

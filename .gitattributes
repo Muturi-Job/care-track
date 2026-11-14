@@ -1,0 +1,7 @@
+# Keep line endings consistent across Windows, macOS and Linux. Binstubs and
+# shell scripts with CRLF fail on Linux with "bad interpreter".
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.ico binary

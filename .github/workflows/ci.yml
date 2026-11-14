@@ -1,0 +1,94 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api:
+    name: API (Rails)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      RAILS_ENV: test
+      DATABASE_HOST: localhost
+      DATABASE_PORT: 5432
+      DATABASE_USERNAME: postgres
+      DATABASE_PASSWORD: postgres
+      CORS_ORIGINS: http://localhost:3000
+      BUNDLE_GEMFILE: ${{ github.workspace }}/api/Gemfile
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+
+      - name: Install gems
+        run: |
+          gem install bundler --conservative
+          bundle install --jobs 4 --retry 3
+
+      - name: Prepare database
+        run: bundle exec rails db:prepare
+
+      - name: Lint (RuboCop)
+        run: bundle exec rubocop --format github
+
+      - name: Security scan (Brakeman)
+        run: bundle exec brakeman -q --no-pager --exit-on-warn
+
+      - name: Test (RSpec)
+        run: bundle exec rspec
+
+  web:
+    name: Web (Next.js)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install packages
+        run: npm ci
+
+      - name: Lint (ESLint)
+        run: npm run lint
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Test (Vitest)
+        run: npm test
+
+      - name: Build
+        run: npm run build
+        env:
+          API_BASE_URL: http://localhost:3001
