@@ -6,6 +6,9 @@ Rails.application.routes.draw do
       # Liveness probe used by the web home page. README documents the contract.
       get "health", to: "health#show"
 
+      # Public: one family member's view, reached by tracking code alone.
+      get "family/:tracking_code", to: "family#show"
+
       resources :procedure_templates, only: :index
 
       # Staff endpoints: no tracking code is involved, so they are the first

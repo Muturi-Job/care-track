@@ -1,28 +1,53 @@
 # Rate limiting (CLAUDE.md rule 3). Family members reach an episode through a
-# long random tracking code, so the family endpoint is throttled per IP to make
-# code guessing impractical.
+# tracking code in the URL, so both the request rate and the rate of wrong
+# codes are limited per IP. Rack::Attack slows brute force; it is not
+# authentication and does not decide who may see what.
+#
+# Rack::Attack is inserted into the middleware stack by its own Railtie; the
+# rules live here and the counters live in Rails.cache.
 #
 # Limits come from the environment (.env.example):
-#   RACK_ATTACK_ENABLED       toggle, default on
-#   RACK_ATTACK_FAMILY_LIMIT  requests per IP per hour, default 60
-#   RACK_ATTACK_STAFF_LIMIT   requests per IP per hour, default 600
-#
-# Rack::Attack is not authentication: it slows brute force, it does not decide
-# who may see what.
+#   RACK_ATTACK_ENABLED            toggle, default on
+#   RACK_ATTACK_FAMILY_LIMIT       family requests per IP per minute, default 30
+#   RACK_ATTACK_FAMILY_MISS_LIMIT  unknown codes before a ban, default 10
+#   RACK_ATTACK_STAFF_LIMIT        staff requests per IP per hour, default 600
 
 Rack::Attack.enabled = ENV.fetch("RACK_ATTACK_ENABLED", "true") != "false"
 
-Rack::Attack.throttled_responder = lambda do |_request|
+# One calm, family-safe body for every refusal (rule 4).
+too_many_requests = lambda do |_request|
   body = { error: "Too many requests. Please call the care team." }.to_json
   [ 429, { "content-type" => "application/json" }, [ body ] ]
 end
 
-# The family endpoint arrives in Phase B; the throttle is defined now so it
-# cannot ship unprotected.
+Rack::Attack.throttled_responder = too_many_requests
+Rack::Attack.blocklisted_responder = too_many_requests
+
+# Polling every ten seconds is normal; this leaves room for a few tabs while
+# still bounding a script.
 Rack::Attack.throttle(
   "family progress by ip",
-  limit: ENV.fetch("RACK_ATTACK_FAMILY_LIMIT", 60).to_i,
+  limit: ENV.fetch("RACK_ATTACK_FAMILY_LIMIT", 30).to_i,
+  period: 1.minute
+) do |request|
+  request.ip if request.path_info.start_with?("/api/v1/family")
+end
+
+# Guessing a tracking code is the one realistic attack on the family endpoint.
+# The controller records each unknown code through FamilyGuard; after
+# RACK_ATTACK_FAMILY_MISS_LIMIT misses in ten minutes the IP is blocked for an
+# hour. Requests that find a real episode never count.
+Rack::Attack.blocklist("family code guessing") do |request|
+  request.path_info.start_with?("/api/v1/family") && FamilyGuard.banned?(request.ip)
+end
+
+# Staff endpoints are not public, but a runaway client still deserves a bound.
+Rack::Attack.throttle(
+  "staff by ip",
+  limit: ENV.fetch("RACK_ATTACK_STAFF_LIMIT", 600).to_i,
   period: 1.hour
 ) do |request|
-  request.ip if request.path.start_with?("/api/v1/family/")
+  if request.path_info.start_with?("/api/v1/episodes", "/api/v1/procedure_templates")
+    request.ip
+  end
 end

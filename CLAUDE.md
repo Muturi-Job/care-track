@@ -32,8 +32,9 @@ One monorepo, two independently runnable apps. The browser only ever talks to
    episode only via a long random code in the URL (`/p/{code}`). Generate with
    `SecureRandom.urlsafe_base64(24)` or stronger; unique index on the column;
    never derive it from patient data. The family API returns only the fields
-   the progress page renders, and is rate-limited (Rack::Attack, per IP, limits
-   from env).
+   the progress page renders — never ids, bed or staff detail — answers unknown
+   codes with 404 and expired links with 410, sends an ETag so unchanged polls
+   cost a 304, and is rate-limited (Rack::Attack, per IP, limits from env).
 4. **Tone.** Family-facing copy is calm, plain, non-clinical. No diagnoses,
    findings, outcomes, prognoses, or numeric timings that imply a result. Any
    state the page cannot explain shows: **"Please call the care team."**
@@ -68,11 +69,13 @@ care-track/
   .github/workflows/ci.yml  lint + test + build for both apps
   api/                      Rails 8 API, RSpec (bin/rails generated with --skip-test)
     app/controllers/api/v1/   health, staff episodes + family progress
-    app/models/               ProcedureTemplate, StageTemplate, Episode, StageEvent
-    app/services/             StageTransitionService (every stage/flag change)
-    app/serializers/          Episode + ProcedureTemplate JSON
+    app/models/               ProcedureTemplate, StageTemplate, Episode, StageEvent,
+                              FamilyMessageCatalog (approved family wording)
+    app/services/             StageTransitionService (every stage/flag change),
+                              FamilyGuard (unknown-code bans)
+    app/serializers/          Episode + ProcedureTemplate + FamilyEpisode JSON
     app/validators/           StageSequenceValidator (contiguous, one terminal)
-    config/initializers/      cors.rb, rack_attack.rb
+    config/initializers/      cors.rb, rack_attack.rb (mounted by its railtie)
     db/                       migrations, seeds.rb
     spec/                     model, service, request specs, factories
     .env.example
@@ -117,9 +120,14 @@ DATABASE_USERNAME=postgres
 DATABASE_PASSWORD=postgres
 CORS_ORIGINS=http://localhost:3000
 RACK_ATTACK_ENABLED=true
-RACK_ATTACK_FAMILY_LIMIT=60          # requests per IP per hour
-RACK_ATTACK_STAFF_LIMIT=600
-EPISODE_LINK_TTL_DAYS=7             # family link lifetime after discharge
+RACK_ATTACK_FAMILY_LIMIT=30          # requests per IP per minute
+RACK_ATTACK_FAMILY_MISS_LIMIT=10     # unknown codes before a one-hour ban
+RACK_ATTACK_STAFF_LIMIT=600          # requests per IP per hour
+EPISODE_LINK_TTL_DAYS=7              # family link lifetime after discharge
+HOSPITAL_CONTACT_PHONE=0000 000 000
+HOSPITAL_CONTACT_TEXT=The care team can be reached through the ward.
+HOSPITAL_VISITING_TEXT=Visiting is arranged with the ward. Please call before you visit.
+FAMILY_BLOCKED_WORDS=                # empty = built-in outcome-related list
 
 # web/.env.example
 API_BASE_URL=http://localhost:3001
@@ -135,10 +143,18 @@ NEXT_PUBLIC_POLL_INTERVAL_MS=10000
 - [ ] Stage sequence is contiguous `1..n` with exactly one terminal stage;
       `bundle exec rspec` proves it.
 - [ ] Tracking code is random, unique-indexed, non-enumerable; family route
-      works with the code alone and 404s otherwise.
-- [ ] Family API response contains only: alias, bed, procedure, stage, updated
-      timestamp. Verified by a request spec asserting the exact key set.
-- [ ] Rate limit returns 429 when exceeded, and has a spec.
+      works with the code alone, 404s on unknown codes and 410s on expired
+      links.
+- [ ] Family API response contains only: alias, procedure, ordered stages,
+      current stage, special status wording, what happens next, duration range,
+      last updated, contact and visiting text. Verified by a request spec
+      asserting the exact key set; no ids, bed or staff detail.
+- [ ] Family responses carry an ETag, and a matching `If-None-Match` gets a 304
+      with no body.
+- [ ] Rate limit returns 429 when exceeded, repeated unknown codes are blocked
+      for a while, and both have specs.
+- [ ] Every generated family string comes from `FamilyMessageCatalog`, and a
+      spec fails if any of it uses a word from `FAMILY_BLOCKED_WORDS`.
 - [ ] Every stage key has calm copy; unknown stage or stale/error response
       renders "Please call the care team."
 - [ ] Progress page polls at `NEXT_PUBLIC_POLL_INTERVAL_MS`, defaults to 10s,

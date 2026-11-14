@@ -6,4 +6,8 @@ Rails.application.configure do
   config.action_dispatch.show_exceptions = :rescuable
   config.action_controller.allow_forgery_protection = false
   config.active_support.deprecation = :stderr
+
+  # Rack::Attack keeps its counters in Rails.cache, and the framework default
+  # (file store) cannot increment, so the family throttle specs need this.
+  config.cache_store = :memory_store
 end
