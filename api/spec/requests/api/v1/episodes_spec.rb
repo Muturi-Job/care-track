@@ -16,6 +16,8 @@ RSpec.describe "API episode endpoints", type: :request do
       expect(payload).to include(
         "patient_alias" => "Patient A",
         "stage_label" => "Preparing",
+        "is_final_stage" => false,
+        "next_stage_label" => "Discharged",
         "expected_minutes" => 20,
         "status_flag" => "normal",
         "current_stage_position" => 2
@@ -80,6 +82,35 @@ RSpec.describe "API episode endpoints", type: :request do
       get "/api/v1/episodes", params: { q: "%" }
 
       expect(response.parsed_body["episodes"]).to eq([])
+    end
+  end
+
+  describe "GET /api/v1/episodes/:id" do
+    it "returns one episode with its stage history, newest first" do
+      episode = create(:episode, patient_alias: "Patient A", current_stage_position: 2)
+      create(:stage_event,
+             episode: episode,
+             stage_template: episode.current_stage_template,
+             event_type: "advanced",
+             occurred_at: 5.minutes.ago)
+
+      get "/api/v1/episodes/#{episode.id}"
+
+      expect(response).to have_http_status(:ok)
+      payload = episode_json
+      expect(payload["patient_alias"]).to eq("Patient A")
+      expect(payload["history"].first).to include(
+        "event_type" => "advanced",
+        "stage_label" => "Preparing",
+        "stage_position" => 2
+      )
+      expect(payload["history"].first["occurred_at"]).to be_present
+    end
+
+    it "returns 404 for an unknown episode" do
+      get "/api/v1/episodes/#{SecureRandom.uuid}"
+
+      expect(response).to have_http_status(:not_found)
     end
   end
 
@@ -219,6 +250,15 @@ RSpec.describe "API episode endpoints", type: :request do
 
       expect(response).to have_http_status(422)
       expect(response.parsed_body["error"]).to eq("terminal_stage")
+    end
+
+    it "reports the final stage with no next stage" do
+      episode = create(:episode, current_stage_position: 2)
+
+      post "/api/v1/episodes/#{episode.id}/advance", headers: { "Idempotency-Key" => "tap-1" }
+
+      expect(episode_json["is_final_stage"]).to be(true)
+      expect(episode_json["next_stage_label"]).to be_nil
     end
 
     it "returns 409 when the key belongs to another episode" do

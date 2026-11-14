@@ -14,6 +14,8 @@ class EpisodeSerializer
       procedure_name: episode.procedure_template.name,
       current_stage_position: episode.current_stage_position,
       stage_label: stage&.label,
+      is_final_stage: stage.present? && stage.is_terminal?,
+      next_stage_label: next_stage&.label,
       expected_minutes: stage&.expected_minutes,
       minutes_in_current_stage: episode.minutes_in_current_stage(now: now),
       minutes_overdue: episode.minutes_overdue(now: now),
@@ -37,6 +39,12 @@ class EpisodeSerializer
 
   def stage
     @stage ||= episode.current_stage_template
+  end
+
+  # The staff card's one-tap button names the stage it will move to; at the
+  # final stage there is no next stage and the button is disabled.
+  def next_stage
+    @next_stage ||= episode.procedure_template.stage_at(episode.current_stage_position + 1)
   end
 
   # The family page lives in the web app, not the API.

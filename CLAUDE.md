@@ -80,11 +80,14 @@ care-track/
     spec/                     model, service, request specs, factories
     .env.example
   web/                      Next.js App Router, src/ directory
-    src/app/                  layout (banner), page, p/[code]/page.tsx
-    src/app/staff/            one-tap stage buttons
-    src/components/           banner, ProgressSteps, StageButton
-    src/lib/                  api client, stages, polling hook
-    src/**/*.test.tsx         Vitest;  e2e/ = Playwright
+    src/app/                  layout (banner), page (API status)
+    src/app/staff/            list, episodes/new, episodes/[id], query provider
+    src/app/api/staff/        route handlers that call the API server-side
+    src/components/staff/     EpisodeCard, EpisodeForm, ShareLinks, Toast
+    src/components/           banner
+    src/lib/staff/            types, parsers, server + browser clients, copy helpers
+    src/lib/                  api client, poll interval, debounce hook
+    src/**/*.test.ts(x)       Vitest;  e2e/ = Playwright
     .env.example
 ```
 

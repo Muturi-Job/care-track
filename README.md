@@ -106,6 +106,7 @@ Everything lives under `/api/v1`. There is no authentication in Phase A
 | --- | --- |
 | `GET /procedure_templates` | Templates with their ordered stages |
 | `GET /episodes` | Active episodes, most urgent first; `?q=` matches alias or bed |
+| `GET /episodes/:id` | One episode with its stage history, newest first |
 | `POST /episodes` | Create from `patient_alias`, `procedure_template_id`, `ward_or_bed` |
 | `PATCH /episodes/:id` | Change the alias or ward/bed only |
 | `POST /episodes/:id/advance` | Move one stage; requires an `Idempotency-Key` header |
@@ -117,6 +118,10 @@ Episodes come back as `{ "episode": { ... } }`; `GET /episodes` returns
 `{ "episodes": [ ... ] }`. Each one carries its `tracking_code` and
 `family_path` (`/p/{code}`). Single-episode responses include `history`, newest
 first — one entry per `stage_event`.
+
+The staff card's primary button needs two derived fields: `next_stage_label`
+(the stage the button names, `null` at the end) and `is_final_stage` (true once
+the current stage is terminal, which disables the button).
 
 `GET /episodes` lists flagged and overdue episodes first (overdue means: in the
 current stage longer than that stage's `expected_minutes`) and omits discharged
@@ -203,6 +208,36 @@ Both refusals answer `429` with "Too many requests. Please call the care team."
 `status` is `ok` or `degraded` (the API answered but the database did not).
 The web app calls this server-side only; the browser never talks to the API.
 
+## Web
+
+The browser never calls the API. Server components and the `/api/staff/*` route
+handlers call it with `API_BASE_URL` and hand back JSON already mapped to the
+shapes the screens use (camelCase, no `error` codes as copy).
+
+### Staff screens
+
+| Route | What it does |
+| --- | --- |
+| `/staff` | Active episodes, flagged and overdue first, search box, 10s polling |
+| `/staff/episodes/new` | Three fields (alias, procedure, bed), then the family link |
+| `/staff/episodes/[id]` | Stage history with timestamps |
+
+- Each card advances with one tap. The button names the next stage, sends a
+  fresh `Idempotency-Key`, and updates the card before the API answers. The
+  toast offers **Undo** for ten seconds (the API's undo window is two minutes).
+- The secondary menu sets a delay reason, asks the family to call the care team,
+  or clears the flag; `/api/staff/episodes/:id/:action` forwards to the matching
+  Rails action.
+- Copy family link and Share on WhatsApp use the same absolute link, built on
+  the server from the request's host. The WhatsApp message is one friendly
+  sentence and the link, nothing else.
+- Calm palette, 44px minimum touch targets, mobile-first at 360px. A TanStack
+  Query provider wraps the staff screens; polling uses
+  `NEXT_PUBLIC_POLL_INTERVAL_MS` (default 10s). Search waits for a 300ms pause.
+
+The family page at `/p/[code]` (the links these screens share) is still Phase B;
+until then those links 404.
+
 ## Data model
 
 | Table | Purpose |
@@ -241,8 +276,14 @@ Phase A has no authentication.
   family payload (exact key set, stage states, wording, ETag/304, 404 and 410),
   both Rack::Attack limits, and the blocked-word check over
   `FamilyMessageCatalog`.
-- `web/src/**/*.test.ts(x)` — Vitest: health payload mapping, prototype banner.
-- `web/e2e` — Playwright: home page shows the banner and `API: ok`.
+- `web/src/**/*.test.ts(x)` — Vitest: health payload mapping, prototype banner,
+  episode card (one-tap advance, overdue highlight, flags, copy/WhatsApp links),
+  create form (validation, family link and sharing reminder), toast
+  auto-dismiss, API payload parsing, and the pure helpers (time formatting,
+  attention order, optimistic updates, WhatsApp URL).
+- `web/e2e` — Playwright: home page shows the banner and `API: ok`; a nurse
+  creates an episode, advances it with one tap and undoes it. The staff spec
+  needs seeded procedures (`make seed`) and leaves one demo episode per run.
 
 The concurrency specs (and only those) run without transactional fixtures so
 two threads can see each other's commits; they clean up after themselves. The
@@ -263,6 +304,5 @@ not leak between them.
 - Test databases: `care_track_test`; development: `care_track_development`.
 - `next build` does not need a running API: the home page is forced dynamic and
   treats an unreachable API as `unavailable`.
-- Further access control and the web side of the family page (`/p/[code]`) are
-  Phase B — the places to add them are marked `ACCESS CONTROL LATER` in the
-  code.
+- Further access control and the family progress page (`/p/[code]`) are Phase B
+  — the places to add them are marked `ACCESS CONTROL LATER` in the code.

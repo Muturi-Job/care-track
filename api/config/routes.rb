@@ -13,7 +13,7 @@ Rails.application.routes.draw do
 
       # Staff endpoints: no tracking code is involved, so they are the first
       # place real access control will be needed.
-      resources :episodes, only: %i[index create update] do
+      resources :episodes, only: %i[index show create update] do
         post :advance, on: :member
         post :undo, on: :member
         post :flag, on: :member

@@ -28,6 +28,11 @@ module Api
         end
       end
 
+      # The staff detail page: one episode with its stage history.
+      def show
+        render_episode(Episode.find(params[:id]))
+      end
+
       def update
         episode = Episode.find(params[:id])
 

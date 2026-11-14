@@ -1,0 +1,114 @@
+"use client";
+
+import { newIdempotencyKey } from "./idempotency";
+import { parseErrorMessage } from "./parse";
+import type { CreateEpisodeInput, DelayReason, StaffEpisode, StatusFlag } from "./types";
+
+/** What the browser sees when a staff request fails. */
+export class StaffRequestError extends Error {
+  readonly status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "StaffRequestError";
+    this.status = status;
+  }
+}
+
+type RequestOptions = {
+  method?: "GET" | "POST";
+  body?: unknown;
+  headers?: Record<string, string>;
+};
+
+async function send<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const { method = "GET", body, headers = {} } = options;
+
+  let response: Response;
+
+  try {
+    response = await fetch(path, {
+      method,
+      headers: {
+        accept: "application/json",
+        ...(body === undefined ? {} : { "content-type": "application/json" }),
+        ...headers,
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+  } catch {
+    throw new StaffRequestError("Could not reach CareTrack. Please try again.", 0);
+  }
+
+  const payload: unknown = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new StaffRequestError(parseErrorMessage(payload, "Please try again."), response.status);
+  }
+
+  return payload as T;
+}
+
+export async function fetchEpisodes(query: string): Promise<StaffEpisode[]> {
+  const trimmed = query.trim();
+  const search = trimmed === "" ? "" : `?q=${encodeURIComponent(trimmed)}`;
+  const body = await send<{ episodes?: StaffEpisode[] }>(`/api/staff/episodes${search}`);
+
+  return body.episodes ?? [];
+}
+
+export async function sendCreateEpisode(input: CreateEpisodeInput): Promise<StaffEpisode> {
+  const body = await send<{ episode: StaffEpisode }>("/api/staff/episodes", {
+    method: "POST",
+    body: input,
+  });
+
+  return body.episode;
+}
+
+/** A fresh Idempotency-Key per tap: one key, one stage change, however it retries. */
+export async function sendAdvance(id: string): Promise<StaffEpisode> {
+  const body = await send<{ episode: StaffEpisode }>(
+    `/api/staff/episodes/${encodeURIComponent(id)}/advance`,
+    { method: "POST", headers: { "idempotency-key": newIdempotencyKey() } },
+  );
+
+  return body.episode;
+}
+
+export async function sendUndo(id: string): Promise<StaffEpisode> {
+  const body = await send<{ episode: StaffEpisode }>(
+    `/api/staff/episodes/${encodeURIComponent(id)}/undo`,
+    { method: "POST" },
+  );
+
+  return body.episode;
+}
+
+export async function sendFlag(
+  id: string,
+  statusFlag: StatusFlag,
+  delayReason: DelayReason | null,
+): Promise<StaffEpisode> {
+  const body = await send<{ episode: StaffEpisode }>(
+    `/api/staff/episodes/${encodeURIComponent(id)}/flag`,
+    { method: "POST", body: { statusFlag, delayReason } },
+  );
+
+  return body.episode;
+}
+
+export async function sendClearFlag(id: string): Promise<StaffEpisode> {
+  const body = await send<{ episode: StaffEpisode }>(
+    `/api/staff/episodes/${encodeURIComponent(id)}/clear-flag`,
+    { method: "POST" },
+  );
+
+  return body.episode;
+}
+
+export function errorMessage(error: unknown): string {
+  return error instanceof StaffRequestError
+    ? error.message
+    : "Something went wrong. Please try again.";
+}

@@ -32,12 +32,15 @@ export function parseHealth(body: unknown): ApiHealth {
   };
 }
 
+/** Server-side only: the browser never talks to the API directly. */
+export function apiBaseUrl(): string {
+  return process.env.API_BASE_URL ?? DEFAULT_API_BASE_URL;
+}
+
 /** Called from the server only: the browser never talks to the API directly. */
 export async function fetchApiHealth(): Promise<ApiHealth> {
-  const baseUrl = process.env.API_BASE_URL ?? DEFAULT_API_BASE_URL;
-
   try {
-    const response = await fetch(`${baseUrl}/api/v1/health`, {
+    const response = await fetch(`${apiBaseUrl()}/api/v1/health`, {
       cache: "no-store",
       signal: AbortSignal.timeout(3000),
     });
