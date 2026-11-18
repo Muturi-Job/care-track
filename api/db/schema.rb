@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_14_090005) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_18_130001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -27,16 +27,47 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_14_090005) do
     t.datetime "link_expires_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.boolean "demo_data", default: false, null: false
+    t.index ["created_at", "procedure_template_id"], name: "index_episodes_for_analytics"
     t.index ["procedure_template_id"], name: "index_episodes_on_procedure_template_id"
     t.index ["status_flag"], name: "index_episodes_on_status_flag"
     t.index ["tracking_code"], name: "index_episodes_on_tracking_code", unique: true
+  end
+
+  create_table "family_sessions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "episode_id", null: false
+    t.string "session_id", limit: 36, null: false
+    t.datetime "first_seen_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
+    t.datetime "last_seen_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
+    t.index ["episode_id", "first_seen_at"], name: "index_family_sessions_for_analytics"
+    t.index ["episode_id", "session_id"], name: "index_family_sessions_on_episode_id_and_session_id", unique: true
+    t.index ["episode_id"], name: "index_family_sessions_on_episode_id"
   end
 
   create_table "feedback_responses", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.string "tracking_code", null: false
     t.string "answer", null: false
     t.datetime "created_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
+    t.index ["tracking_code", "created_at"], name: "index_feedback_for_analytics"
     t.index ["tracking_code"], name: "index_feedback_responses_on_tracking_code"
+  end
+
+  create_table "inquiries", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "episode_id"
+    t.string "channel", null: false
+    t.datetime "logged_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
+    t.string "idempotency_key"
+    t.index ["episode_id", "logged_at", "channel"], name: "index_inquiries_by_episode_for_analytics"
+    t.index ["episode_id"], name: "index_inquiries_on_episode_id"
+    t.index ["idempotency_key"], name: "index_inquiries_on_idempotency_key", unique: true
+    t.index ["logged_at", "episode_id"], name: "index_inquiries_for_analytics"
+    t.index ["logged_at"], name: "index_inquiries_on_logged_at"
+  end
+
+  create_table "metric_settings", force: :cascade do |t|
+    t.string "key", null: false
+    t.string "value", default: "", null: false
+    t.index ["key"], name: "index_metric_settings_on_key", unique: true
   end
 
   create_table "procedure_templates", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -55,8 +86,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_14_090005) do
     t.string "idempotency_key"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "status_flag"
+    t.string "delay_reason"
+    t.string "recorded_by_device", limit: 50
+    t.index ["episode_id", "event_type", "occurred_at"], name: "index_stage_events_by_episode_for_analytics"
     t.index ["episode_id", "occurred_at"], name: "index_stage_events_on_episode_id_and_occurred_at"
+    t.index ["event_type", "occurred_at", "episode_id"], name: "index_stage_events_for_analytics"
     t.index ["idempotency_key"], name: "index_stage_events_on_idempotency_key", unique: true
+    t.index ["stage_template_id", "event_type", "occurred_at"], name: "index_stage_events_by_stage_for_analytics"
     t.index ["stage_template_id"], name: "index_stage_events_on_stage_template_id"
   end
 
@@ -73,6 +110,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_14_090005) do
   end
 
   add_foreign_key "episodes", "procedure_templates"
+  add_foreign_key "family_sessions", "episodes"
+  add_foreign_key "inquiries", "episodes"
   add_foreign_key "stage_events", "episodes"
   add_foreign_key "stage_events", "stage_templates"
   add_foreign_key "stage_templates", "procedure_templates"

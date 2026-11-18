@@ -65,3 +65,31 @@ body {
   color: var(--ink);
   font-family: var(--font-geist-sans), system-ui, sans-serif;
 }
+
+@page {
+  size: A4 portrait;
+  margin: 10mm;
+}
+
+@media print {
+  body {
+    background: white;
+    color: #17332a;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .summary-print,
+  .baseline-print {
+    break-inside: avoid;
+    box-shadow: none !important;
+  }
+
+  .summary-print {
+    font-size: 15pt;
+  }
+
+  .summary-print h1 {
+    font-size: 30pt;
+  }
+}

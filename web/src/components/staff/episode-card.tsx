@@ -18,6 +18,7 @@ export type EpisodeCardProps = {
   onDelay: (episode: StaffEpisode, reason: DelayReason) => void;
   onCallCareTeam: (episode: StaffEpisode) => void;
   onClearFlag: (episode: StaffEpisode) => void;
+  onLogInquiry?: (episode: StaffEpisode) => void;
 };
 
 export function EpisodeCard({
@@ -28,6 +29,7 @@ export function EpisodeCard({
   onDelay,
   onCallCareTeam,
   onClearFlag,
+  onLogInquiry = () => undefined,
 }: EpisodeCardProps) {
   const headingId = useId();
   const reasonId = useId();
@@ -82,6 +84,9 @@ export function EpisodeCard({
         {episode.expectedMinutes !== null
           ? ` · usually about ${formatMinutes(episode.expectedMinutes)}`
           : ""}
+      </p>
+      <p className="mt-1 text-sm text-muted">
+        Family inquiries logged: {episode.inquiryCount ?? 0}
       </p>
 
       {flag ? (
@@ -143,6 +148,7 @@ export function EpisodeCard({
           {episode.statusFlag !== "normal" ? (
             <MenuButton label="Clear flag" disabled={busy} onClick={() => onClearFlag(episode)} />
           ) : null}
+          <MenuButton label="Log a family inquiry" disabled={busy} onClick={() => onLogInquiry(episode)} />
         </div>
       </details>
 

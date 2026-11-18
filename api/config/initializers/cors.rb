@@ -14,7 +14,7 @@ Rails.application.config.middleware.insert_before 0, Rack::Cors do
     origins(*allowed_origins)
     resource "/api/*",
              headers: :any,
-              methods: [:get, :post, :patch, :put, :delete, :options, :head],
-      expose: ["ETag"]
+             methods: [ :get, :post, :patch, :put, :delete, :options, :head ],
+             expose: [ "ETag" ]
   end
 end

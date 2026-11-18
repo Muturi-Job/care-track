@@ -37,7 +37,7 @@ class StageTransitionService
 
   # Idempotent advance: the row lock serialises concurrent taps, and the
   # Idempotency-Key makes a retried tap a no-op.
-  def advance(episode_id:, idempotency_key:, now: Time.current)
+  def advance(episode_id:, idempotency_key:, recorded_by_device: nil, now: Time.current)
     key = normalize_key(idempotency_key)
 
     Episode.transaction do
@@ -54,7 +54,10 @@ class StageTransitionService
         stage_template: next_stage,
         event_type: "advanced",
         occurred_at: now,
-        idempotency_key: key
+        idempotency_key: key,
+        status_flag: episode.status_flag,
+        delay_reason: episode.delay_reason,
+        recorded_by_device: recorded_by_device
       )
 
       episode.update!(advance_attributes(episode, next_stage, now))
@@ -92,7 +95,7 @@ class StageTransitionService
     raise Rejected.new(:validation_failed, message: e.record.errors.full_messages.to_sentence)
   end
 
-  def flag(episode_id:, status_flag:, delay_reason: nil, now: Time.current)
+  def flag(episode_id:, status_flag:, delay_reason: nil, recorded_by_device: nil, now: Time.current)
     status = status_flag.to_s
     raise Rejected.new(:invalid_status) unless FLAGGABLE_STATUSES.include?(status)
 
@@ -113,7 +116,10 @@ class StageTransitionService
         episode: episode,
         stage_template: episode.current_stage_template,
         event_type: "flagged",
-        occurred_at: now
+        occurred_at: now,
+        status_flag: status,
+        delay_reason: reason,
+        recorded_by_device: recorded_by_device
       )
 
       episode.save!
@@ -125,7 +131,7 @@ class StageTransitionService
 
   # Clearing an already-clear flag is a no-op: no event, because nothing
   # changed (CLAUDE.md: history is the record of changes).
-  def clear_flag(episode_id:, now: Time.current)
+  def clear_flag(episode_id:, recorded_by_device: nil, now: Time.current)
     Episode.transaction do
       episode = Episode.lock.find(episode_id)
       return no_change(episode) if episode.normal?
@@ -134,7 +140,10 @@ class StageTransitionService
         episode: episode,
         stage_template: episode.current_stage_template,
         event_type: "flag_cleared",
-        occurred_at: now
+        occurred_at: now,
+        status_flag: "normal",
+        delay_reason: nil,
+        recorded_by_device: recorded_by_device
       )
 
       episode.update!(status_flag: "normal", delay_reason: nil)

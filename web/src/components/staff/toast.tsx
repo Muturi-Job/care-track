@@ -10,6 +10,7 @@ export type ToastAction = {
 export type ToastMessage = {
   text: string;
   action?: ToastAction;
+  durationMs?: number;
 };
 
 /** The undo window the toast offers (two taps: advance, then undo). */
@@ -24,7 +25,7 @@ export function Toast({ toast, onDismiss }: ToastProps) {
   useEffect(() => {
     if (!toast) return;
 
-    const timer = setTimeout(onDismiss, TOAST_DURATION_MS);
+    const timer = setTimeout(onDismiss, toast.durationMs ?? TOAST_DURATION_MS);
     return () => clearTimeout(timer);
   }, [toast, onDismiss]);
 

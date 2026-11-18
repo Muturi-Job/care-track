@@ -12,6 +12,26 @@ Rails.application.routes.draw do
       # Public: the page's one feedback question (answer + tracking code only).
       post "family/:tracking_code/feedback", to: "family_feedback#create"
 
+      # Public: one anonymous family session per page load. Never called by the
+      # ten-second poll.
+      post "family/:tracking_code/session", to: "family_sessions#create"
+
+      # Staff: metrics captured for the prototype analysis.
+      post "episodes/:id/inquiries", to: "inquiries#create"
+      delete "inquiries/:id", to: "inquiries#destroy"
+
+      get "settings/metrics", to: "metric_settings#show"
+      patch "settings/metrics", to: "metric_settings#update"
+
+      namespace :analytics do
+        get :overview, to: "reports#overview"
+        get :bottlenecks, to: "reports#bottlenecks"
+        get :delays, to: "reports#delays"
+        get :inquiries, to: "reports#inquiries"
+        get :data_quality, to: "reports#data_quality"
+        get "export.csv", to: "reports#export"
+      end
+
       resources :procedure_templates, only: :index
 
       # Production keeps these endpoints on the private backend network; the

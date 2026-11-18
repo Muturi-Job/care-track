@@ -75,14 +75,15 @@ afterEach(() => {
 });
 
 describe("FamilyLive", () => {
-  it("renders the server's first view before any polling happens", () => {
+  it("renders the server's first view and pings once without polling", () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
     renderLive();
 
     expect(screen.getByRole("heading", { level: 2, name: "Preparing" })).toBeTruthy();
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0][0]).toBe("/api/family/ABCDEFGHJK/session");
   });
 
   it("polls with the last ETag and shows the new stage, announcing it", async () => {

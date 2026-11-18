@@ -11,14 +11,14 @@ module Api
 
       def index
         now = Time.current
-        episodes = Episode.active.includes(procedure_template: :stage_templates)
+        episodes = Episode.active.includes(:inquiries, procedure_template: :stage_templates)
         episodes = episodes.search(params[:q]) if params[:q].present?
 
         ordered = episodes.sort_by do |episode|
           [ episode.attention_rank(now: now), -episode.minutes_overdue(now: now), episode.created_at ]
         end
 
-        render json: { episodes: ordered.map { |episode| serialize(episode, now: now) } }
+        render json: { episodes: ordered.map { |episode| serialize(episode, include_history: false, now: now) } }
       end
 
       def create
@@ -49,7 +49,8 @@ module Api
       def advance
         result = transitions.advance(
           episode_id: params[:id],
-          idempotency_key: request.headers["Idempotency-Key"]
+          idempotency_key: request.headers["Idempotency-Key"],
+          recorded_by_device: recorded_by_device
         )
 
         render_episode(result.episode)
@@ -65,14 +66,18 @@ module Api
         result = transitions.flag(
           episode_id: params[:id],
           status_flag: flag_params[:status_flag],
-          delay_reason: flag_params[:delay_reason]
+          delay_reason: flag_params[:delay_reason],
+          recorded_by_device: recorded_by_device
         )
 
         render_episode(result.episode)
       end
 
       def clear_flag
-        result = transitions.clear_flag(episode_id: params[:id])
+        result = transitions.clear_flag(
+          episode_id: params[:id],
+          recorded_by_device: recorded_by_device
+        )
 
         render_episode(result.episode)
       end
@@ -87,6 +92,18 @@ module Api
 
       def transitions
         @transitions ||= StageTransitionService.new
+      end
+
+      # Anonymous device token supplied by the staff client. The header is
+      # preferred, with a body parameter as a fallback for simple clients, and
+      # it is capped so a malformed value cannot break a stage change.
+      def recorded_by_device
+        value = request.headers["X-Device-Id"].presence || params[:recorded_by_device].presence
+        if value.blank? && params[:episode].is_a?(ActionController::Parameters)
+          value = params[:episode][:recorded_by_device]
+        end
+
+        value.to_s.strip.first(50).presence
       end
 
       def serialize(episode, include_history: true, now: Time.current)

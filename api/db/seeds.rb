@@ -77,10 +77,19 @@ module Seeds
   ].freeze
 
   def self.run
+    seed_metric_settings
     templates = PROCEDURE_NAMES.index_with { |name| template_for(name) }
 
     create_demo_episodes(templates)
     report
+  end
+
+  # Defaults live in MetricSetting; seeds only fill gaps so a tuned value is
+  # never overwritten by a later seed run.
+  def self.seed_metric_settings
+    MetricSetting::DEFAULTS.each do |key, value|
+      MetricSetting.find_or_create_by!(key: key) { |setting| setting.value = value }
+    end
   end
 
   def self.template_for(name)

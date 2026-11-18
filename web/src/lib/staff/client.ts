@@ -16,7 +16,7 @@ export class StaffRequestError extends Error {
 }
 
 type RequestOptions = {
-  method?: "GET" | "POST";
+  method?: "GET" | "POST" | "DELETE";
   body?: unknown;
   headers?: Record<string, string>;
 };
@@ -114,6 +114,27 @@ export async function sendClearFlag(id: string): Promise<StaffEpisode> {
   );
 
   return body.episode;
+}
+
+export type InquiryChannel = "phone" | "desk" | "ward" | "other";
+
+export async function logInquiry(
+  episodeId: string,
+  channel: InquiryChannel,
+): Promise<{ id: string; inquiryCount: number }> {
+  const body = await send<{ id: string; inquiry_count: number }>(
+    `/api/staff/episodes/${encodeURIComponent(episodeId)}/inquiries`,
+    {
+      method: "POST",
+      body: { channel },
+      headers: { "idempotency-key": newIdempotencyKey() },
+    },
+  );
+  return { id: body.id, inquiryCount: body.inquiry_count };
+}
+
+export async function undoInquiry(id: string): Promise<void> {
+  await send<void>(`/api/staff/inquiries/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
 
 export function errorMessage(error: unknown): string {

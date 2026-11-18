@@ -15,7 +15,9 @@ import {
   sendAdvance,
   sendClearFlag,
   sendFlag,
+  logInquiry,
   sendUndo,
+  undoInquiry,
 } from "@/lib/staff/client";
 import {
   applyAdvance,
@@ -28,6 +30,7 @@ import type { DelayReason, StaffEpisode, StatusFlag } from "@/lib/staff/types";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
 
 import { EpisodeCard } from "./episode-card";
+import { InquirySheet } from "./inquiry-sheet";
 import { Toast, type ToastMessage } from "./toast";
 
 const LIST_QUERY_KEY = "staff-episodes";
@@ -44,6 +47,7 @@ type FlagVariables = {
 export function StaffEpisodes({ origin }: { origin: string }) {
   const [search, setSearch] = useState("");
   const [toast, setToast] = useState<ToastMessage | null>(null);
+  const [inquiryEpisode, setInquiryEpisode] = useState<StaffEpisode | null | undefined>(undefined);
   const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_MS);
   const queryClient = useQueryClient();
   const dismissToast = useCallback(() => setToast(null), []);
@@ -143,7 +147,38 @@ export function StaffEpisodes({ origin }: { origin: string }) {
     onSettled: refresh,
   });
 
-  const busy = advance.isPending || flag.isPending || clearFlag.isPending || undo.isPending;
+  const log = useMutation({
+    mutationFn: ({ episode, channel }: { episode: StaffEpisode; channel: "phone" | "desk" | "ward" | "other" }) =>
+      logInquiry(episode.id, channel),
+    onSuccess: (result, { episode }) => {
+      writeLists((list) => list.map((item) =>
+        item.id === episode.id ? { ...item, inquiryCount: result.inquiryCount } : item,
+      ));
+      setToast({
+        text: "Inquiry logged",
+        durationMs: 120_000,
+        action: {
+          label: "Undo",
+          onClick: () => undoLog.mutate({ id: result.id, episodeId: episode.id }),
+        },
+      });
+    },
+    onError: (error) => setToast({ text: errorMessage(error) }),
+  });
+
+  const undoLog = useMutation({
+    mutationFn: ({ id }: { id: string; episodeId: string }) => undoInquiry(id),
+    onSuccess: (_result, { episodeId }) => {
+      writeLists((list) => list.map((item) =>
+        item.id === episodeId ? { ...item, inquiryCount: Math.max((item.inquiryCount ?? 1) - 1, 0) } : item,
+      ));
+      setToast({ text: "Inquiry removed." });
+      refresh();
+    },
+    onError: (error) => setToast({ text: errorMessage(error) }),
+  });
+
+  const busy = advance.isPending || flag.isPending || clearFlag.isPending || undo.isPending || log.isPending;
   const episodes = episodesQuery.data ? sortForStaff(episodesQuery.data) : [];
 
   return (
@@ -205,10 +240,27 @@ export function StaffEpisodes({ origin }: { origin: string }) {
                 flag.mutate({ episode: target, statusFlag: "call_care_team" })
               }
               onClearFlag={(target) => clearFlag.mutate(target)}
+              onLogInquiry={(target) => setInquiryEpisode(target)}
             />
           </li>
         ))}
       </ul>
+
+      <button
+        type="button"
+        onClick={() => setInquiryEpisode(null)}
+        className="fixed bottom-5 right-4 z-20 min-h-12 rounded-full bg-brand px-5 text-sm font-semibold text-white shadow-lg hover:bg-brand-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-strong sm:right-8"
+      >
+        Log inquiry
+      </button>
+      {inquiryEpisode !== undefined ? (
+        <InquirySheet
+          episodes={episodes}
+          initialEpisode={inquiryEpisode}
+          onLog={async (episode, channel) => { await log.mutateAsync({ episode, channel }); }}
+          onClose={() => setInquiryEpisode(undefined)}
+        />
+      ) : null}
 
       <Toast toast={toast} onDismiss={dismissToast} />
     </div>

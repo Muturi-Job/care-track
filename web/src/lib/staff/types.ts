@@ -38,6 +38,7 @@ export type StaffEpisode = {
   minutesOverdue: number;
   statusFlag: StatusFlag;
   delayReason: DelayReason | null;
+  inquiryCount?: number;
   familyPath: string;
   trackingCode: string;
   history: StageHistoryEntry[];

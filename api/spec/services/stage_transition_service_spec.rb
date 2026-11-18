@@ -22,8 +22,35 @@ RSpec.describe StageTransitionService, type: :model do
       expect(result.replayed).to be(false)
       expect(result.event.event_type).to eq("advanced")
       expect(result.event.stage_template.position).to eq(2)
-      expect(result.event.occurred_at).to be_within(1.millisecond).of(now)
+      expect(result.event.occurred_at).to be_within(0.001).of(now)
       expect(result.event.idempotency_key).to eq("tap-1")
+    end
+
+    it "snapshots the current normal flag on the event" do
+      result = advance(episode, now: now)
+
+      expect(result.event.status_flag).to eq("normal")
+      expect(result.event.delay_reason).to be_nil
+    end
+
+    it "snapshots an active delay on the event" do
+      episode.update!(status_flag: "delayed", delay_reason: "awaiting_bed")
+
+      result = advance(episode, now: now)
+
+      expect(result.event.status_flag).to eq("delayed")
+      expect(result.event.delay_reason).to eq("awaiting_bed")
+    end
+
+    it "records the device that made the change" do
+      result = service.advance(
+        episode_id: episode.id,
+        idempotency_key: "tap-1",
+        recorded_by_device: "ipad-ward-3",
+        now: now
+      )
+
+      expect(result.event.recorded_by_device).to eq("ipad-ward-3")
     end
 
     it "sets discharge time and link expiry on entering the terminal stage" do
@@ -173,7 +200,20 @@ RSpec.describe StageTransitionService, type: :model do
       expect(episode.status_flag).to eq("delayed")
       expect(episode.delay_reason).to eq("awaiting_bed")
       expect(result.event.event_type).to eq("flagged")
+      expect(result.event.status_flag).to eq("delayed")
+      expect(result.event.delay_reason).to eq("awaiting_bed")
       expect(episode.current_stage_position).to eq(1)
+    end
+
+    it "records the device that set the flag" do
+      result = service.flag(
+        episode_id: episode.id,
+        status_flag: "call_care_team",
+        recorded_by_device: "phone-desk-1",
+        now: now
+      )
+
+      expect(result.event.recorded_by_device).to eq("phone-desk-1")
     end
 
     it "flags call_care_team without a reason" do
@@ -261,6 +301,23 @@ RSpec.describe StageTransitionService, type: :model do
       expect(episode.status_flag).to eq("normal")
       expect(episode.delay_reason).to be_nil
       expect(result.event.event_type).to eq("flag_cleared")
+      expect(result.event.status_flag).to eq("normal")
+      expect(result.event.delay_reason).to be_nil
+    end
+
+    it "keeps the earlier flag detail after the flag is cleared" do
+      service.flag(
+        episode_id: episode.id,
+        status_flag: "delayed",
+        delay_reason: "awaiting_team",
+        now: now
+      )
+
+      service.clear_flag(episode_id: episode.id, now: now + 1.minute)
+
+      flagged = events_of(episode, "flagged").sole
+      expect(flagged.status_flag).to eq("delayed")
+      expect(flagged.delay_reason).to eq("awaiting_team")
     end
 
     it "does nothing when the flag is already clear" do

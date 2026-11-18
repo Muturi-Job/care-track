@@ -78,6 +78,7 @@ export function parseEpisode(value: unknown): StaffEpisode {
     minutesOverdue: asNumber(raw.minutes_overdue),
     statusFlag: asStatusFlag(raw.status_flag),
     delayReason: asDelayReason(raw.delay_reason),
+    inquiryCount: asNumber(raw.inquiry_count),
     familyPath: asString(raw.family_path, ""),
     trackingCode: asString(raw.tracking_code, ""),
     history: parseHistory(raw.history),

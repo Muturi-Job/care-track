@@ -8,9 +8,12 @@ class Episode < ApplicationRecord
   belongs_to :procedure_template
   has_many :stage_events, dependent: :destroy
   has_many :stage_templates, through: :procedure_template
+  has_many :inquiries, dependent: :destroy
+  has_many :family_sessions, dependent: :destroy
 
   # "Active" is the staff list's definition: not yet discharged.
   scope :active, -> { where(discharged_at: nil) }
+  scope :demo_data, -> { where(demo_data: true) }
   scope :search, ->(query) do
     term = "%#{sanitize_sql_like(query.to_s.strip)}%"
     where("patient_alias ILIKE :term OR ward_or_bed ILIKE :term", term: term)

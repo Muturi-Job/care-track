@@ -25,9 +25,13 @@ One monorepo, two independently runnable apps. The browser only ever talks to
    control, leave exactly one short comment:
    `# ACCESS CONTROL LATER: ...` (TypeScript: `// ACCESS CONTROL LATER: ...`).
 2. **Minimum data.** Persist only: patient alias or first name, bed,
-   procedure, stage, timestamps. Never add fields for diagnoses, notes,
-   results, ID numbers, contacts, or images. When tempted to add a column,
-   don't.
+   procedure, stage, timestamps; inquiry channel and time; an anonymous
+   family-session id and timestamps; feedback answer, tracking code and time;
+   and metric settings. Never add fields for diagnoses, notes, results, ID
+   numbers, contacts, or images. When tempted to add a column, don't. The
+   `demo_data` boolean is the sole episode-field exception: it marks clearly
+   synthetic episodes so the analytics demo can be cleared without touching
+   real records; it must never contain patient information.
 3. **Family access is the tracking code alone.** A family member reaches an
    episode only via a long random code in the URL (`/p/{code}`). Generate with
    `SecureRandom.urlsafe_base64(24)` or stronger; unique index on the column;
@@ -40,7 +44,8 @@ One monorepo, two independently runnable apps. The browser only ever talks to
    state the page cannot explain shows: **"Please call the care team."**
 5. **Simplicity.** The simplest thing that works. No websockets, no background
    workers, no job queue, no push, no SMS/WhatsApp/email. Family page polls
-   every 10 seconds. No caching layer, no state library, no design system.
+   every 10 seconds. No caching layer except the analytics responses cached
+   for 60 seconds; no state library, no design system.
 6. **Quality.** Tests cover the business rules (stage transitions, family
    payload shape, code lookup, rate limiting, fallback copy). Small functions.
    Configuration via environment variables, documented in `.env.example`.
@@ -66,13 +71,15 @@ stage the page cannot explain is unknown → rule 4 fallback copy.
 ```
 care-track/
   CLAUDE.md  README.md  Makefile  docker-compose.yml
+  docs/analytics.md        analytics metric definitions and limitations
   .github/workflows/ci.yml  lint + test + build for both apps
   api/                      Rails 8 API, RSpec (bin/rails generated with --skip-test)
     app/controllers/api/v1/   health, staff episodes + family progress
     app/models/               ProcedureTemplate, StageTemplate, Episode, StageEvent,
                               FamilyMessageCatalog (approved family wording)
     app/services/             StageTransitionService (every stage/flag change),
-                              FamilyGuard (unknown-code bans)
+                              FamilyGuard (unknown-code bans), analytics/
+                              (aggregate-only reports)
     app/serializers/          Episode + ProcedureTemplate + FamilyEpisode JSON
     app/validators/           StageSequenceValidator (contiguous, one terminal)
     config/initializers/      cors.rb, rack_attack.rb (mounted by its railtie)
@@ -81,7 +88,8 @@ care-track/
     .env.example
   web/                      Next.js App Router, src/ directory
     src/app/                  layout (banner), page (API status)
-    src/app/staff/            list, episodes/new, episodes/[id], query provider
+    src/app/staff/            list, episodes/new, episodes/[id], query provider,
+                              insights dashboard, settings and print views
     src/app/api/staff/        route handlers that call the API server-side
     src/components/staff/     EpisodeCard, EpisodeForm, ShareLinks, Toast
     src/components/           banner
@@ -102,6 +110,8 @@ cd api && bundle exec rspec          # business-rule + request specs
 cd api && bundle exec rubocop        # lint
 cd api && bundle exec brakeman -q    # security scan
 cd api && bin/rails db:seed          # demo episodes (Phase B) + /p/{code} URLs
+cd api && bin/rails demo:analytics   # 60 days of clearly synthetic analytics history
+cd api && bin/rails demo:analytics:clear # remove only synthetic analytics records
 
 cd web && npm run dev                # http://localhost:3000
 cd web && npm test                   # vitest

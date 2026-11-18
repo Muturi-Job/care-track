@@ -34,6 +34,28 @@ export function FamilyLive({ code, initial, initialEtag }: FamilyLiveProps) {
   const etag = useRef(initialEtag);
   const inFlight = useRef(false);
   const announcementKey = useRef(statusKey(initial));
+  const sessionPingForCode = useRef("");
+
+  useEffect(() => {
+    if (sessionPingForCode.current === code) return;
+    sessionPingForCode.current = code;
+    try {
+      const key = `caretrack-family-session:${code}`;
+      let sessionId = window.sessionStorage.getItem(key);
+      if (!sessionId) {
+        sessionId = window.crypto.randomUUID();
+        window.sessionStorage.setItem(key, sessionId);
+      }
+      void fetch(`/api/family/${encodeURIComponent(code)}/session`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ session_id: sessionId }),
+        cache: "no-store",
+      }).catch(() => undefined);
+    } catch {
+      // Session storage is optional; the family page should still load.
+    }
+  }, [code]);
 
   const check = useCallback(async () => {
     if (inFlight.current) return;

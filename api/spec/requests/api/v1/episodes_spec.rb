@@ -247,6 +247,16 @@ RSpec.describe "API episode endpoints", type: :request do
       expect(StageEvent.where(episode_id: episode.id, event_type: "advanced").count).to eq(1)
     end
 
+    it "records the device that made the change" do
+      episode = create(:episode, current_stage_position: 1)
+
+      post "/api/v1/episodes/#{episode.id}/advance",
+           headers: { "Idempotency-Key" => "tap-1", "X-Device-Id" => "ipad-ward-3" }
+
+      expect(StageEvent.where(episode_id: episode.id, event_type: "advanced").last.recorded_by_device)
+        .to eq("ipad-ward-3")
+    end
+
     it "requires an Idempotency-Key header" do
       episode = create(:episode, current_stage_position: 1)
 
@@ -390,6 +400,22 @@ RSpec.describe "API episode endpoints", type: :request do
       expect(episode_json["status_flag"]).to eq("normal")
       expect(episode_json["delay_reason"]).to be_nil
       expect(episode_json["history"].first["event_type"]).to eq("flag_cleared")
+    end
+
+    it "keeps the earlier flag detail after the flag is cleared" do
+      episode = create(:episode)
+
+      post "/api/v1/episodes/#{episode.id}/flag",
+           params: { status_flag: "delayed", delay_reason: "awaiting_bed" }
+      post "/api/v1/episodes/#{episode.id}/flag/clear"
+      get "/api/v1/episodes/#{episode.id}"
+
+      history = episode_json["history"]
+      flagged = history.find { |event| event["event_type"] == "flagged" }
+      cleared = history.find { |event| event["event_type"] == "flag_cleared" }
+
+      expect(flagged).to include("status_flag" => "delayed", "delay_reason" => "awaiting_bed")
+      expect(cleared).to include("status_flag" => "normal", "delay_reason" => nil)
     end
   end
 end

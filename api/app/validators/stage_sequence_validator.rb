@@ -7,7 +7,7 @@ class StageSequenceValidator < ActiveModel::Validator
     errors = record.errors
 
     unless contiguous?(stages)
-      errors.add(:stage_templates, "positions must run 1..n with no gaps or duplicates")
+      errors.add(:stage_templates, "positions must be contiguous, running 1..n with no gaps or duplicates")
     end
 
     return if stages.count { |stage| stage.is_terminal? } == 1

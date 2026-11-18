@@ -12,6 +12,7 @@ class EpisodeSerializer
       ward_or_bed: episode.ward_or_bed,
       procedure_template_id: episode.procedure_template_id,
       procedure_name: episode.procedure_template.name,
+      inquiry_count: episode.inquiries.size,
       current_stage_position: episode.current_stage_position,
       stage_label: stage&.label,
       is_final_stage: stage.present? && stage.is_terminal?,
@@ -61,6 +62,8 @@ class EpisodeSerializer
                event_type: event.event_type,
                stage_position: event.stage_template.position,
                stage_label: event.stage_template.label,
+               status_flag: event.status_flag,
+               delay_reason: event.delay_reason,
                occurred_at: event.occurred_at
              }
            end

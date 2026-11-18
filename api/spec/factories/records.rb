@@ -25,7 +25,7 @@ FactoryBot.define do
   # position.
   factory :stage_template do
     procedure_template
-    position { (procedure_template.stage_templates.map(&:position).max || 0) + 1 }
+    position { (procedure_template.stage_templates.map(&:position).compact.max || 0) + 1 }
     label { "Preparing" }
     family_explanation { "The care team is getting things ready." }
     expected_minutes { 30 }
@@ -49,5 +49,23 @@ FactoryBot.define do
       stages = episode.procedure_template.stage_templates
       stages.find { |stage| stage.position == episode.current_stage_position } || stages.first
     end
+  end
+
+  factory :inquiry do
+    episode
+    channel { "phone" }
+    logged_at { Time.current }
+  end
+
+  factory :family_session do
+    episode
+    sequence(:session_id) { SecureRandom.uuid }
+    first_seen_at { Time.current }
+    last_seen_at { Time.current }
+  end
+
+  factory :metric_setting do
+    key { "grace_minutes" }
+    value { "5" }
   end
 end

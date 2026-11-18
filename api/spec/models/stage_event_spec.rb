@@ -55,4 +55,53 @@ RSpec.describe StageEvent, type: :model do
       expect(build(:stage_event, episode: episode, idempotency_key: nil)).to be_valid
     end
   end
+
+  describe "flag snapshot" do
+    it "accepts a flag and reason on a flagged event" do
+      event = build(
+        :stage_event,
+        event_type: "flagged",
+        status_flag: "delayed",
+        delay_reason: "awaiting_bed"
+      )
+
+      expect(event).to be_valid
+    end
+
+    it "allows events without a flag snapshot" do
+      expect(build(:stage_event, status_flag: nil, delay_reason: nil)).to be_valid
+    end
+
+    it "rejects a flag outside the fixed list" do
+      expect(build(:stage_event, status_flag: "lost")).not_to be_valid
+    end
+
+    it "rejects a delay reason outside the fixed list" do
+      expect(
+        build(:stage_event, status_flag: "delayed", delay_reason: "traffic")
+      ).not_to be_valid
+    end
+
+    it "rejects a reason when the flag is not delayed" do
+      event = build(
+        :stage_event,
+        event_type: "flagged",
+        status_flag: "call_care_team",
+        delay_reason: "awaiting_bed"
+      )
+
+      expect(event).not_to be_valid
+      expect(event.errors[:delay_reason]).to include("is only allowed when the flag is delayed")
+    end
+  end
+
+  describe "recorded_by_device" do
+    it "accepts up to 50 characters" do
+      expect(build(:stage_event, recorded_by_device: "d" * 50)).to be_valid
+    end
+
+    it "rejects more than 50 characters" do
+      expect(build(:stage_event, recorded_by_device: "d" * 51)).not_to be_valid
+    end
+  end
 end
